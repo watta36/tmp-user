@@ -29,7 +29,7 @@ import { ProductService, Product } from './product.service';
 
     <div class="grid">
       <article class="card" *ngFor="let p of filtered()">
-        <img [src]="p.image" [alt]="p.name" (click)="openDetail(p)" style="cursor:pointer">
+        <img [src]="imgSrc(p)" [alt]="p.name" (click)="openDetail(p)" style="cursor:pointer">
         <div class="body">
           <strong style="cursor:pointer" (click)="openDetail(p)">{{ p.name }}</strong>
           <div class="small">{{ p.category }} <ng-container *ngIf="p.sku">• SKU: {{ p.sku }}</ng-container></div>
@@ -71,8 +71,9 @@ export class ShopComponent {
   constructor(public ps: ProductService){}
 
   cats = computed(() => this.ps.categories());
-  cartCount = computed(() => this.cart().reduce((s, i) => s + i.qty, 0));
+  imgSrc(p: Product){ return p.image || ''; }
 
+  selectCat(c: string){ this.activeCat.set(c); }
   iconFor(c: string){
     const t = (c||'').toLowerCase();
     if(t.includes('กุ้ง')||t.includes('shrimp')) return '🦐';
@@ -81,8 +82,6 @@ export class ShopComponent {
     if(t.includes('พริกแกง')||t.includes('curry')) return '🥣';
     return '📦';
   }
-
-  selectCat(c: string){ this.activeCat.set(c); }
 
   filtered() {
     let list = this.ps.list().filter(p => (p.name + ' ' + (p.description||'')).toLowerCase().includes(this.q.toLowerCase()));

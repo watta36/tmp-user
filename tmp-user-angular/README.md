@@ -1,27 +1,14 @@
-# tmp-user (Angular 20) — Shop + Admin CRUD
-- หน้า Shop สำหรับลูกค้า (ไม่มีล็อกอิน)
-- หน้า Admin (`/admin`) เพิ่ม/แก้ไข/ลบสินค้าได้ทั้งหมด (ชื่อ/ราคา/หน่วย/หมวด/รูป/รายละเอียด/SKU)
-- ล็อกอินแบบง่าย (config ใน `src/app/config.ts`)
+# tmp-user (Angular 20) — Hidden Admin + Offline Images
+- **Admin URL แยก**: กำหนด path ใน `src/app/config.ts` เช่น `manage-987xyz` → เข้าได้ที่ `/manage-987xyz`
+- ไม่โชว์ลิงก์ Admin ในเมนู
+- **รูปออฟไลน์**: seed ใช้ **SVG Data URL**; ในหน้า Admin อัปโหลดรูปแล้วเก็บเป็น **Data URL** (ไม่พึ่งลิงก์)
 
-## รัน
-```bash
+## Run
 npm install
 npm start
-```
-เปิด http://localhost:4200/ (Shop)
-ไปหน้า Admin: http://localhost:4200/admin
 
-## บัญชีแอดมิน (แก้ได้ใน config.ts)
-```ts
-export const APP_CONFIG = { adminUser: 'admin', adminPass: '1234' };
-```
+Shop: http://localhost:4200/
+Admin: http://localhost:4200/manage-987xyz  (เปลี่ยน path ใน config.ts ได้)
 
-## บันทึกข้อมูล
-- Product เก็บใน `localStorage` คีย์ `tmp_products_v1`
-- ปุ่ม Reset ในหน้า Admin จะคืนค่าเป็น SEED 10 รายการ
-
-## Build/Deploy
-```bash
-npm run build
-```
-ไฟล์ static: `dist/tmp-user/browser`
+## Build / Deploy (Vercel/Netlify/Cloudflare)
+npm run build → dist/tmp-user/browser

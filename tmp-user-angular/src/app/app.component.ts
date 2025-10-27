@@ -1,6 +1,5 @@
-import { Component, computed } from '@angular/core';
-import { RouterLink, RouterOutlet } from '@angular/router';
-import { AuthService } from './auth.service';
+import { Component } from '@angular/core';
+import { RouterOutlet, RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-root',
@@ -11,15 +10,12 @@ import { AuthService } from './auth.service';
     <div class="brand">TMP Shop (Angular)</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <a class="btn" routerLink="/">ร้านค้า</a>
-      <a class="btn" routerLink="/admin">Admin</a>
     </div>
   </nav>
   <router-outlet></router-outlet>
   <footer class="footer container small">
-    © 2025 tmp-user — demo shop with admin CRUD
+    © 2025 tmp-user — demo shop with hidden admin
   </footer>
   `
 })
-export class AppComponent {
-  constructor(public auth: AuthService){}
-}
+export class AppComponent {}

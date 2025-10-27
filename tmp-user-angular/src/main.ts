@@ -3,10 +3,11 @@ import { provideRouter, Routes, withInMemoryScrolling } from '@angular/router';
 import { AppComponent } from './app/app.component';
 import { ShopComponent } from './app/shop.component';
 import { AdminComponent } from './app/admin.component';
+import { APP_CONFIG } from './app/config';
 
 const routes: Routes = [
   { path: '', component: ShopComponent },
-  { path: 'admin', component: AdminComponent },
+  { path: APP_CONFIG.adminPath, component: AdminComponent },
   { path: '**', redirectTo: '' }
 ];
 

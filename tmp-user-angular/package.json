@@ -1,6 +1,6 @@
 {
   "name": "tmp-user",
-  "version": "0.0.1",
+  "version": "0.0.4",
   "private": true,
   "scripts": {
     "start": "ng serve --port 4200 --open",
@@ -20,7 +20,7 @@
     "@angular/router": "^20.3.7",
     "rxjs": "^7.8.1",
     "tslib": "^2.6.2",
-    "zone.js": "^0.14.8"
+    "zone.js": "~0.15.1"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^20.3.7",
@@ -29,6 +29,6 @@
     "typescript": "^5.8.2"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.19.0 || >=22.12.0"
   }
 }

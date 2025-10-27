@@ -115,7 +115,7 @@ export class ShopComponent {
   orderSingle(p: Product){ this.openLine(`สั่งซื้อสินค้า: ${p.name} จำนวน 1 ${p.unit}`); }
   openDetail(p: Product){ alert(`${p.name}\nราคา ${p.price} ฿/${p.unit}\n${p.description||''}`); }
   openLine(text: string){
-    const LINE_ID = '@saji.sunmarine';
+    const LINE_ID = '@tmpseafood';
     const url = `https://line.me/R/oaMessage/${encodeURIComponent(LINE_ID)}/?${encodeURIComponent(text)}`;
     (window as any).location.href = url;
   }

@@ -7,34 +7,75 @@ import { ProductService, Product } from './product.service';
   selector: 'app-shop',
   imports: [CommonModule],
   template: `
-  <section class="container" style="padding-top:12px">
-    <div class="catbar">
-      <div class="catbtn" [class.active]="!activeCat()" (click)="selectCat('')">✨ ทั้งหมด</div>
-      <ng-container *ngFor="let c of cats()">
-        <div class="catbtn" [class.active]="activeCat() === c" (click)="selectCat(c)">{{ iconFor(c) }} {{ c }}</div>
-      </ng-container>
+  <section class="container hero hero-shop">
+    <div class="hero-copy">
+      <p class="eyebrow">TMP Shop (Angular)</p>
+      <h1 class="hero-title">ทะเลสดพร้อมเสิร์ฟ ส่งเร็วทุกวัน</h1>
+      <p class="muted">คัดสรรวัตถุดิบทะเลและซอสปรุงรสอย่างดี อัปเดตราคาล่าสุด พร้อมส่งถึงคุณในไม่กี่ขั้นตอน</p>
+      <div class="action-row">
+        <button class="btn primary" (click)="openLine('สอบถามสินค้า / สต็อก')">แชทกับทีม TMP</button>
+        <div class="chip">จัดส่งทุกวัน • มีเจ้าหน้าที่ช่วยแพ็ก</div>
+      </div>
+    </div>
+    <div class="hero-panel">
+      <div class="hero-panel-row">
+        <div>
+          <p class="small label">จำนวนสินค้าในตะกร้า</p>
+          <div class="hero-number">{{ cartCount() }} ชิ้น</div>
+        </div>
+        <div>
+          <p class="small label">ยอดรวมโดยประมาณ</p>
+          <div class="hero-number">{{ cartTotal() | number:'1.0-0' }} ฿</div>
+        </div>
+      </div>
+      <button class="btn primary wide" (click)="orderCart()" [disabled]="!cart().length">สั่งทั้งตะกร้าผ่าน LINE</button>
+      <p class="muted small" style="margin:0">ตะกร้าเก็บไว้ให้อัตโนมัติ สามารถกลับมาแก้ไขได้ทุกเมื่อ</p>
     </div>
   </section>
 
-  <section class="container">
-    <div class="toolbar">
-      <input class="input" placeholder="ค้นหา..." (input)="q = ($any($event.target).value || '').toString()">
-      <select class="input" style="max-width:220px" (change)="sort = $any($event.target).value">
-        <option value="latest">ล่าสุด</option>
-        <option value="price-asc">ราคาต่ำ-สูง</option>
-        <option value="price-desc">ราคาสูง-ต่ำ</option>
-        <option value="name">ชื่อสินค้า (ก-ฮ)</option>
-      </select>
+  <section class="container" style="padding-top:8px">
+    <div class="filter-card">
+      <div class="catbar">
+        <div class="catbtn" [class.active]="!activeCat()" (click)="selectCat('')">✨ ทั้งหมด</div>
+        <ng-container *ngFor="let c of cats()">
+          <div class="catbtn" [class.active]="activeCat() === c" (click)="selectCat(c)">{{ iconFor(c) }} {{ c }}</div>
+        </ng-container>
+      </div>
+      <div class="toolbar">
+        <input class="input" placeholder="ค้นหาเมนูหรือรหัสสินค้า..." (input)="q = ($any($event.target).value || '').toString()">
+        <select class="input" style="max-width:220px" (change)="sort = $any($event.target).value">
+          <option value="latest">เรียงล่าสุด</option>
+          <option value="price-asc">ราคาต่ำ-สูง</option>
+          <option value="price-desc">ราคาสูง-ต่ำ</option>
+          <option value="name">ชื่อสินค้า (ก-ฮ)</option>
+        </select>
+      </div>
     </div>
 
-    <div class="grid">
-      <article class="card" *ngFor="let p of filtered()">
-        <img [src]="imgSrc(p)" [alt]="p.name" (click)="openDetail(p)" style="cursor:pointer">
-        <div class="body">
-          <strong style="cursor:pointer" (click)="openDetail(p)">{{ p.name }}</strong>
-          <div class="small">{{ p.category }} <ng-container *ngIf="p.sku">• SKU: {{ p.sku }}</ng-container></div>
-          <div class="price">{{ p.price | number:'1.0-0' }} ฿ <span class="small">/ {{ p.unit }}</span></div>
-          <div style="display:flex;gap:8px">
+    <div class="grid product-grid">
+      <article class="card product-card" *ngFor="let p of filtered()">
+        <div class="product-media">
+          <img [src]="imgSrc(p)" [alt]="p.name" (click)="openDetail(p)" class="product-img">
+          <div class="sku-pill" *ngIf="p.sku">SKU {{ p.sku }}</div>
+          <div class="tag">{{ iconFor(p.category) }} {{ p.category }}</div>
+        </div>
+        <div class="body product-body">
+          <div class="product-head">
+            <div>
+              <p class="eyebrow smallcaps">แนะนำ</p>
+              <h3 class="product-name" (click)="openDetail(p)">{{ p.name }}</h3>
+              <p class="muted product-desc">{{ p.description || 'พร้อมจัดส่งทันที สอบถามรายละเอียดเพิ่มเติมได้ทาง LINE' }}</p>
+            </div>
+            <div class="price-block">
+              <div class="price">{{ p.price | number:'1.0-0' }} ฿</div>
+              <div class="unit muted">/ {{ p.unit }}</div>
+            </div>
+          </div>
+          <div class="meta-row">
+            <span class="pill-ghost">สดใหม่ คัดเกรด</span>
+            <span class="pill-ghost">แพ็กสุญญากาศ</span>
+          </div>
+          <div class="action-row">
             <button class="btn" (click)="addToCart(p,1)">เพิ่มตะกร้า</button>
             <button class="btn primary" (click)="orderSingle(p)">สั่งผ่าน LINE</button>
           </div>
@@ -48,17 +89,23 @@ import { ProductService, Product } from './product.service';
   <section class="container">
     <h2>ตะกร้าสินค้า</h2>
     <div *ngIf="!cart().length" class="small">ยังไม่มีสินค้าในตะกร้า</div>
-    <table class="table" *ngIf="cart().length">
-      <thead><tr><th>สินค้า</th><th>จำนวน</th><th>ราคา/หน่วย</th><th>รวม</th></tr></thead>
-      <tbody>
-        <tr *ngFor="let it of cart()">
-          <td>{{ it.product.name }}</td>
-          <td><input class="input" type="number" min="0" [value]="it.qty" (input)="updateQty(it.product, $any($event.target).valueAsNumber)" style="width:90px"></td>
-          <td>{{ it.product.price | number:'1.0-0' }} ฿</td>
-          <td>{{ (it.product.price * it.qty) | number:'1.0-0' }} ฿</td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="table-wrap" *ngIf="cart().length">
+      <table class="table">
+        <thead><tr><th>สินค้า</th><th>จำนวน</th><th>ราคา/หน่วย</th><th>รวม</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let it of cart()">
+            <td>{{ it.product.name }}</td>
+            <td><input class="input qty-input" type="number" min="0" [value]="it.qty" (input)="updateQty(it.product, $any($event.target).valueAsNumber)"></td>
+            <td>{{ it.product.price | number:'1.0-0' }} ฿</td>
+            <td>{{ (it.product.price * it.qty) | number:'1.0-0' }} ฿</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div *ngIf="cart().length" class="cart-actions">
+      <div class="small">ยอดรวม {{ cartTotal() | number:'1.0-0' }} ฿</div>
+      <button class="btn primary" (click)="orderCart()">สั่งสินค้าทั้งตะกร้าผ่าน LINE</button>
+    </div>
   </section>
   `
 })
@@ -113,10 +160,20 @@ export class ShopComponent {
   saveCart(){ localStorage.setItem('tmp_cart', JSON.stringify(this.cart())); }
 
   orderSingle(p: Product){ this.openLine(`สั่งซื้อสินค้า: ${p.name} จำนวน 1 ${p.unit}`); }
+  orderCart(){
+    const bag = this.cart();
+    if (!bag.length) { alert('ยังไม่มีสินค้าในตะกร้า'); return; }
+    const lines = bag.map(it => `- ${it.product.name} x ${it.qty} ${it.product.unit}`);
+    const summary = `ยอดรวม ${this.cartTotal().toLocaleString('th-TH')} ฿`;
+    this.openLine(`สั่งซื้อสินค้าทั้งตะกร้า:\n${lines.join('\n')}\n${summary}`);
+  }
   openDetail(p: Product){ alert(`${p.name}\nราคา ${p.price} ฿/${p.unit}\n${p.description||''}`); }
   openLine(text: string){
     const LINE_ID = '@tmpseafood';
     const url = `https://line.me/R/oaMessage/${encodeURIComponent(LINE_ID)}/?${encodeURIComponent(text)}`;
     (window as any).location.href = url;
   }
+
+  cartCount(){ return this.cart().reduce((sum, it) => sum + it.qty, 0); }
+  cartTotal(){ return this.cart().reduce((sum, it) => sum + (it.product.price * it.qty), 0); }
 }

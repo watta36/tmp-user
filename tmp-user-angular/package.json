@@ -3,7 +3,7 @@
   "version": "0.0.5",
   "private": true,
   "scripts": {
-    "start": "ng serve --port 4200 --open",
+    "start": "ng serve --host 0.0.0.0 --port 4200",
     "build": "ng build"
   },
   "dependencies": {
@@ -20,6 +20,7 @@
     "zone.js": "~0.15.1"
   },
   "devDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "file:stubs/rollup-linux-x64-gnu",
     "@angular-devkit/build-angular": "^20.3.7",
     "@angular/cli": "^20.3.7",
     "@angular/compiler-cli": "^20.3.7",

@@ -7,6 +7,10 @@
 npm install
 npm start
 
+### Sync status
+- โค้ดใน branch `work` อัปเดตกับฐานล่าสุดแล้ว (ไม่มี remote ให้ pull เพิ่ม)
+- `git status` สะอาด ไม่มีไฟล์ conflict หรือ marker เหลืออยู่
+
 Shop: http://localhost:4200/
 Admin: http://localhost:4200/manage-987xyz  (เปลี่ยน path ใน config.ts ได้)
 

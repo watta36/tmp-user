@@ -95,16 +95,16 @@ type Draft = Omit<Product, 'id'>;
             <thead><tr><th style="width:180px">รูป</th><th>ชื่อ</th><th style="width:110px">ราคา</th><th style="width:180px">หน่วย/หมวด</th><th>SKU</th><th>รายละเอียด</th><th style="width:220px">จัดการ</th></tr></thead>
             <tbody>
               <tr *ngFor="let p of ps.products(); trackBy: track">
-                <td><img class="preview" [src]="p.image" alt=""></td>
-                <td><input class="input" [(ngModel)]="p.name"></td>
-                <td><input class="input" type="number" [(ngModel)]="p.price"></td>
-                <td>
+                <td class="cell" data-label="รูป"><img class="preview" [src]="p.image" alt=""></td>
+                <td class="cell" data-label="ชื่อ"><input class="input" [(ngModel)]="p.name"></td>
+                <td class="cell" data-label="ราคา"><input class="input" type="number" [(ngModel)]="p.price"></td>
+                <td class="cell" data-label="หน่วย/หมวด">
                   <input class="input" [(ngModel)]="p.unit"><br/>
                   <input class="input" [(ngModel)]="p.category">
                 </td>
-                <td><input class="input" [(ngModel)]="p.sku"></td>
-                <td><textarea class="input" rows="3" [(ngModel)]="p.description"></textarea></td>
-                <td class="tr-actions admin-row-actions">
+                <td class="cell" data-label="SKU"><input class="input" [(ngModel)]="p.sku"></td>
+                <td class="cell" data-label="รายละเอียด"><textarea class="input" rows="3" [(ngModel)]="p.description"></textarea></td>
+                <td class="cell tr-actions admin-row-actions" data-label="จัดการ">
                   <input type="file" accept="image/*" (change)="onReplaceImage(p, $event)">
                   <button class="btn" (click)="save(p)">บันทึก</button>
                   <button class="btn danger" (click)="remove(p.id)">ลบ</button>

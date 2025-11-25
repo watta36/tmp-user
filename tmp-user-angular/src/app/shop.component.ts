@@ -55,11 +55,17 @@ import { ProductService, Product } from './product.service';
     <div class="grid product-grid">
       <article class="card product-card" *ngFor="let p of filtered()">
         <div class="product-media">
-          <img [src]="imgSrc(p)" [alt]="p.name" (click)="openDetail(p)" class="product-img">
+          <div class="product-img-frame">
+            <img [src]="imgSrc(p)" [alt]="p.name" (click)="openDetail(p)" class="product-img">
+          </div>
           <div class="sku-pill" *ngIf="p.sku">SKU {{ p.sku }}</div>
           <div class="tag">{{ iconFor(p.category) }} {{ p.category }}</div>
         </div>
         <div class="body product-body">
+          <div class="product-top">
+            <span class="pill-highlight">{{ iconFor(p.category) }} หมวด {{ p.category }}</span>
+            <span class="pill-soft" *ngIf="p.sku">#{{ p.sku }}</span>
+          </div>
           <div class="product-head">
             <div>
               <p class="eyebrow smallcaps">แนะนำ</p>

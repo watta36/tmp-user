@@ -92,7 +92,7 @@ type Draft = Omit<Product, 'id'>;
         </div>
         <div class="table-wrap admin-table-wrap">
           <table class="table admin-table">
-            <thead><tr><th style="width:120px">รูป</th><th>ชื่อ</th><th style="width:110px">ราคา</th><th style="width:180px">หน่วย/หมวด</th><th>SKU</th><th>รายละเอียด</th><th style="width:220px">จัดการ</th></tr></thead>
+            <thead><tr><th style="width:180px">รูป</th><th>ชื่อ</th><th style="width:110px">ราคา</th><th style="width:180px">หน่วย/หมวด</th><th>SKU</th><th>รายละเอียด</th><th style="width:220px">จัดการ</th></tr></thead>
             <tbody>
               <tr *ngFor="let p of ps.products(); trackBy: track">
                 <td><img class="preview" [src]="p.image" alt=""></td>

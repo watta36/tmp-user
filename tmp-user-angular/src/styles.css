@@ -27,3 +27,14 @@
 .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
 hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 .hidden{display:none}
+.table-wrap{overflow-x:auto}
+.qty-input{max-width:110px}
+.cart-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap}
+
+@media(max-width:700px){
+  .toolbar{flex-direction:column;align-items:stretch}
+  .toolbar .input{width:100%}
+  .cart-actions{flex-direction:column;align-items:stretch}
+  .cart-actions .btn{width:100%}
+  .table th,.table td{white-space:nowrap}
+}

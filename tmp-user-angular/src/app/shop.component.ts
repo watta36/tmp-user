@@ -48,17 +48,23 @@ import { ProductService, Product } from './product.service';
   <section class="container">
     <h2>ตะกร้าสินค้า</h2>
     <div *ngIf="!cart().length" class="small">ยังไม่มีสินค้าในตะกร้า</div>
-    <table class="table" *ngIf="cart().length">
-      <thead><tr><th>สินค้า</th><th>จำนวน</th><th>ราคา/หน่วย</th><th>รวม</th></tr></thead>
-      <tbody>
-        <tr *ngFor="let it of cart()">
-          <td>{{ it.product.name }}</td>
-          <td><input class="input" type="number" min="0" [value]="it.qty" (input)="updateQty(it.product, $any($event.target).valueAsNumber)" style="width:90px"></td>
-          <td>{{ it.product.price | number:'1.0-0' }} ฿</td>
-          <td>{{ (it.product.price * it.qty) | number:'1.0-0' }} ฿</td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="table-wrap" *ngIf="cart().length">
+      <table class="table">
+        <thead><tr><th>สินค้า</th><th>จำนวน</th><th>ราคา/หน่วย</th><th>รวม</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let it of cart()">
+            <td>{{ it.product.name }}</td>
+            <td><input class="input qty-input" type="number" min="0" [value]="it.qty" (input)="updateQty(it.product, $any($event.target).valueAsNumber)"></td>
+            <td>{{ it.product.price | number:'1.0-0' }} ฿</td>
+            <td>{{ (it.product.price * it.qty) | number:'1.0-0' }} ฿</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div *ngIf="cart().length" class="cart-actions">
+      <div class="small">ยอดรวม {{ cartTotal() | number:'1.0-0' }} ฿</div>
+      <button class="btn primary" (click)="orderCart()">สั่งสินค้าทั้งตะกร้าผ่าน LINE</button>
+    </div>
   </section>
   `
 })
@@ -113,10 +119,19 @@ export class ShopComponent {
   saveCart(){ localStorage.setItem('tmp_cart', JSON.stringify(this.cart())); }
 
   orderSingle(p: Product){ this.openLine(`สั่งซื้อสินค้า: ${p.name} จำนวน 1 ${p.unit}`); }
+  orderCart(){
+    const bag = this.cart();
+    if (!bag.length) { alert('ยังไม่มีสินค้าในตะกร้า'); return; }
+    const lines = bag.map(it => `- ${it.product.name} x ${it.qty} ${it.product.unit}`);
+    const summary = `ยอดรวม ${this.cartTotal().toLocaleString('th-TH')} ฿`;
+    this.openLine(`สั่งซื้อสินค้าทั้งตะกร้า:\n${lines.join('\n')}\n${summary}`);
+  }
   openDetail(p: Product){ alert(`${p.name}\nราคา ${p.price} ฿/${p.unit}\n${p.description||''}`); }
   openLine(text: string){
     const LINE_ID = '@tmpseafood';
     const url = `https://line.me/R/oaMessage/${encodeURIComponent(LINE_ID)}/?${encodeURIComponent(text)}`;
     (window as any).location.href = url;
   }
+
+  cartTotal(){ return this.cart().reduce((sum, it) => sum + (it.product.price * it.qty), 0); }
 }

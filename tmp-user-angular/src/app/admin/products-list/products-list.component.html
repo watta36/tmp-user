@@ -1,0 +1,53 @@
+<div class="products-list">
+  <div class="product-card" *ngFor="let p of ps.products(); trackBy: track">
+    <div class="product-card__top">
+      <div class="product-card__image" aria-hidden="true">
+        <img [src]="p.image" [alt]="p.name || 'สินค้า'" />
+      </div>
+      <div class="product-card__summary">
+        <label class="small">ชื่อสินค้า</label>
+        <input class="input" [(ngModel)]="p.name" />
+        <div class="product-card__price-row">
+          <div>
+            <label class="small">ราคา</label>
+            <input class="input" type="number" [(ngModel)]="p.price" />
+          </div>
+          <div>
+            <label class="small">หน่วย</label>
+            <input class="input" [(ngModel)]="p.unit" />
+          </div>
+        </div>
+        <div class="product-card__chip-row">
+          <span class="pill pill-ghost" *ngIf="p.category">{{ p.category }}</span>
+          <span class="pill pill-ghost" *ngIf="p.sku">SKU {{ p.sku }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="product-card__fields">
+      <div>
+        <label class="small">หมวดหมู่</label>
+        <input class="input" [(ngModel)]="p.category" />
+      </div>
+      <div>
+        <label class="small">SKU</label>
+        <input class="input" [(ngModel)]="p.sku" />
+      </div>
+      <div class="full-row">
+        <label class="small">รายละเอียด</label>
+        <textarea class="input" rows="3" [(ngModel)]="p.description"></textarea>
+      </div>
+    </div>
+
+    <div class="product-card__actions">
+      <div class="product-card__upload">
+        <label class="small">เปลี่ยนรูปสินค้า</label>
+        <input type="file" accept="image/*" (change)="onReplaceImage(p, $event)" />
+      </div>
+      <div class="product-card__buttons">
+        <button class="btn" (click)="save(p)">บันทึก</button>
+        <button class="btn danger" (click)="remove(p.id)">ลบ</button>
+      </div>
+    </div>
+  </div>
+</div>

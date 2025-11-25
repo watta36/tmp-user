@@ -30,11 +30,18 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 .table-wrap{overflow-x:auto}
 .qty-input{max-width:110px}
 .cart-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap}
+.admin-toolbar,.admin-login-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.admin-login-actions{margin-bottom:4px}
+.admin-table-wrap{margin-top:8px}
+.admin-table{min-width:900px}
+.admin-table .input,.admin-table textarea{min-width:140px}
+.admin-table th,.admin-table td{white-space:normal}
+.admin-row-actions{flex-direction:column;align-items:stretch}
 
 @media(max-width:700px){
   .toolbar{flex-direction:column;align-items:stretch}
   .toolbar .input{width:100%}
   .cart-actions{flex-direction:column;align-items:stretch}
   .cart-actions .btn{width:100%}
-  .table th,.table td{white-space:nowrap}
+  .table:not(.admin-table) th,.table:not(.admin-table) td{white-space:nowrap}
 }

@@ -19,7 +19,7 @@ type Draft = Omit<Product, 'id'>;
         <div><label class="small">Username</label><input class="input" [(ngModel)]="username" placeholder="admin"></div>
         <div><label class="small">Password</label><input class="input" [(ngModel)]="password" type="password" placeholder="1234"></div>
       </div>
-      <div style="display:flex;gap:8px;margin-top:10px">
+      <div class="admin-login-actions">
         <button class="btn primary" (click)="doLogin()">Login</button>
         <span class="small">* ตั้งค่าใน <code>src/app/config.ts</code></span>
       </div>
@@ -27,7 +27,7 @@ type Draft = Omit<Product, 'id'>;
     </div>
 
     <div *ngIf="auth.authed()">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <div class="admin-toolbar">
         <button class="btn" (click)="logout()">Logout</button>
         <button class="btn danger" (click)="reset()">Reset ข้อมูลเริ่มต้น</button>
       </div>
@@ -53,27 +53,29 @@ type Draft = Omit<Product, 'id'>;
       </div>
 
       <h3 style="margin-top:24px">รายการสินค้า</h3>
-      <table class="table">
-        <thead><tr><th style="width:110px">รูป</th><th>ชื่อ</th><th style="width:110px">ราคา</th><th style="width:160px">หน่วย/หมวด</th><th>SKU</th><th>รายละเอียด</th><th style="width:220px">จัดการ</th></tr></thead>
-        <tbody>
-          <tr *ngFor="let p of ps.products(); trackBy: track">
-            <td><img class="preview" [src]="p.image" alt=""></td>
-            <td><input class="input" [(ngModel)]="p.name"></td>
-            <td><input class="input" type="number" [(ngModel)]="p.price"></td>
-            <td>
-              <input class="input" [(ngModel)]="p.unit"><br/>
-              <input class="input" [(ngModel)]="p.category">
-            </td>
-            <td><input class="input" [(ngModel)]="p.sku"></td>
-            <td><textarea class="input" rows="3" [(ngModel)]="p.description"></textarea></td>
-            <td class="tr-actions">
-              <input type="file" accept="image/*" (change)="onReplaceImage(p, $event)">
-              <button class="btn" (click)="save(p)">บันทึก</button>
-              <button class="btn danger" (click)="remove(p.id)">ลบ</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="table-wrap admin-table-wrap">
+        <table class="table admin-table">
+          <thead><tr><th style="width:110px">รูป</th><th>ชื่อ</th><th style="width:110px">ราคา</th><th style="width:160px">หน่วย/หมวด</th><th>SKU</th><th>รายละเอียด</th><th style="width:220px">จัดการ</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let p of ps.products(); trackBy: track">
+              <td><img class="preview" [src]="p.image" alt=""></td>
+              <td><input class="input" [(ngModel)]="p.name"></td>
+              <td><input class="input" type="number" [(ngModel)]="p.price"></td>
+              <td>
+                <input class="input" [(ngModel)]="p.unit"><br/>
+                <input class="input" [(ngModel)]="p.category">
+              </td>
+              <td><input class="input" [(ngModel)]="p.sku"></td>
+              <td><textarea class="input" rows="3" [(ngModel)]="p.description"></textarea></td>
+              <td class="tr-actions admin-row-actions">
+                <input type="file" accept="image/*" (change)="onReplaceImage(p, $event)">
+                <button class="btn" (click)="save(p)">บันทึก</button>
+                <button class="btn danger" (click)="remove(p.id)">ลบ</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </section>
   `

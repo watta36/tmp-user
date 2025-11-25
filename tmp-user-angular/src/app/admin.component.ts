@@ -11,70 +11,108 @@ type Draft = Omit<Product, 'id'>;
   selector: 'app-admin',
   imports: [CommonModule, FormsModule],
   template: `
-  <section class="container">
-    <h2>Admin</h2>
+  <section class="container admin-shell">
+    <header class="admin-hero">
+      <div>
+        <p class="eyebrow">Store Console</p>
+        <h2 style="margin:6px 0 4px">Admin</h2>
+        <p class="muted">จัดการสินค้าให้น่าใช้ ปรับราคา เปลี่ยนรูป และควบคุมสต็อกได้จากจุดเดียว</p>
+      </div>
+      <div class="admin-badge">พร้อมใช้งาน ✅</div>
+    </header>
 
-    <div *ngIf="!auth.authed()">
-      <div class="form-grid">
+    <div *ngIf="!auth.authed()" class="panel admin-card">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">เข้าสู่ระบบ</p>
+          <h3 style="margin:4px 0 6px">ล็อกอินผู้ดูแล</h3>
+          <p class="muted">ใช้บัญชีที่กำหนดไว้ใน <code>src/app/config.ts</code> เพื่อเข้าจัดการสินค้า</p>
+        </div>
+        <div class="pill pill-ghost">จำกัดเฉพาะผู้ดูแล</div>
+      </div>
+      <div class="form-grid two-col">
         <div><label class="small">Username</label><input class="input" [(ngModel)]="username" placeholder="admin"></div>
         <div><label class="small">Password</label><input class="input" [(ngModel)]="password" type="password" placeholder="1234"></div>
       </div>
       <div class="admin-login-actions">
-        <button class="btn primary" (click)="doLogin()">Login</button>
-        <span class="small">* ตั้งค่าใน <code>src/app/config.ts</code></span>
+        <button class="btn primary wide" (click)="doLogin()">Login</button>
+        <span class="small">* รองรับการใช้งานบนมือถือและเดสก์ท็อป</span>
       </div>
-      <hr>
     </div>
 
-    <div *ngIf="auth.authed()">
-      <div class="admin-toolbar">
-        <button class="btn" (click)="logout()">Logout</button>
-        <button class="btn danger" (click)="reset()">Reset ข้อมูลเริ่มต้น</button>
-      </div>
+    <div *ngIf="auth.authed()" class="admin-grid">
+      <div class="panel admin-card">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">การจัดการร้าน</p>
+            <h3 style="margin:4px 0">เพิ่ม / อัปเดตสินค้า</h3>
+            <p class="muted">ออกแบบใหม่ให้ดูสะอาด ใช้ง่าย ทั้งบนมือถือและเดสก์ท็อป</p>
+          </div>
+          <div class="pill-row">
+            <span class="pill">สินค้า {{ ps.products().length }} รายการ</span>
+            <span class="pill pill-ghost">เข้าสู่ระบบแล้ว</span>
+          </div>
+        </div>
+        <div class="admin-toolbar">
+          <button class="btn" (click)="logout()">Logout</button>
+          <button class="btn danger" (click)="reset()">Reset ข้อมูลเริ่มต้น</button>
+        </div>
 
-      <h3 style="margin-top:16px">เพิ่มสินค้าใหม่</h3>
-      <div class="form-grid">
-        <div><label class="small">ชื่อสินค้า</label><input class="input" [(ngModel)]="draft.name"></div>
-        <div><label class="small">ราคา (บาท)</label><input class="input" type="number" [(ngModel)]="draft.price"></div>
-        <div><label class="small">หน่วย</label><input class="input" [(ngModel)]="draft.unit"></div>
-        <div><label class="small">หมวดหมู่</label><input class="input" [(ngModel)]="draft.category"></div>
-        <div><label class="small">SKU</label><input class="input" [(ngModel)]="draft.sku"></div>
-        <div style="grid-column:1/-1"><label class="small">รายละเอียด</label><textarea class="input" rows="3" [(ngModel)]="draft.description"></textarea></div>
-        <div style="grid-column:1/-1">
-          <label class="small">รูปสินค้า (อัปโหลดไฟล์)</label><br>
-          <input type="file" accept="image/*" (change)="onUploadNew($event)">
-          <span class="small">* เก็บเป็น Data URL ในเครื่อง (ไม่ใช้ลิงก์)</span>
+        <div class="form-grid two-col">
+          <div><label class="small">ชื่อสินค้า</label><input class="input" [(ngModel)]="draft.name" placeholder="เช่น กุ้งสด 1 กก."></div>
+          <div><label class="small">ราคา (บาท)</label><input class="input" type="number" [(ngModel)]="draft.price" placeholder="0"></div>
+          <div><label class="small">หน่วย</label><input class="input" [(ngModel)]="draft.unit" placeholder="แพ็ค / กก. / ชิ้น"></div>
+          <div><label class="small">หมวดหมู่</label><input class="input" [(ngModel)]="draft.category" placeholder="กุ้ง / ปลา / ซอส"></div>
+          <div><label class="small">SKU</label><input class="input" [(ngModel)]="draft.sku" placeholder="ใส่หรือเว้นว่าง"></div>
+          <div class="full-row"><label class="small">รายละเอียด</label><textarea class="input" rows="3" [(ngModel)]="draft.description" placeholder="จุดเด่น หรือวิธีใช้คร่าวๆ"></textarea></div>
+          <div class="full-row upload-row">
+            <div>
+              <label class="small">รูปสินค้า (อัปโหลดไฟล์)</label>
+              <input type="file" accept="image/*" (change)="onUploadNew($event)">
+              <p class="small muted" style="margin-top:4px">บันทึกเป็น Data URL ในเครื่อง ไม่พึ่งลิงก์ภายนอก</p>
+            </div>
+            <div class="image-chip" *ngIf="draft.image">พร้อมใช้งาน</div>
+          </div>
+        </div>
+        <div *ngIf="draft.image" class="preview-frame"><img class="preview" [src]="draft.image" alt=""></div>
+        <div class="action-row">
+          <button class="btn primary" (click)="add()">เพิ่มสินค้า</button>
+          <button class="btn" (click)="clearDraft()">ล้างฟอร์ม</button>
         </div>
       </div>
-      <div *ngIf="draft.image" style="margin-top:10px"><img class="preview" [src]="draft.image" alt=""></div>
-      <div style="display:flex;gap:8px;margin-top:10px">
-        <button class="btn primary" (click)="add()">เพิ่มสินค้า</button>
-        <button class="btn" (click)="clearDraft()">ล้างฟอร์ม</button>
-      </div>
 
-      <h3 style="margin-top:24px">รายการสินค้า</h3>
-      <div class="table-wrap admin-table-wrap">
-        <table class="table admin-table">
-          <thead><tr><th style="width:110px">รูป</th><th>ชื่อ</th><th style="width:110px">ราคา</th><th style="width:160px">หน่วย/หมวด</th><th>SKU</th><th>รายละเอียด</th><th style="width:220px">จัดการ</th></tr></thead>
-          <tbody>
-            <tr *ngFor="let p of ps.products(); trackBy: track">
-              <td><img class="preview" [src]="p.image" alt=""></td>
-              <td><input class="input" [(ngModel)]="p.name"></td>
-              <td><input class="input" type="number" [(ngModel)]="p.price"></td>
-              <td>
-                <input class="input" [(ngModel)]="p.unit"><br/>
-                <input class="input" [(ngModel)]="p.category">
-              </td>
-              <td><input class="input" [(ngModel)]="p.sku"></td>
-              <td><textarea class="input" rows="3" [(ngModel)]="p.description"></textarea></td>
-              <td class="tr-actions admin-row-actions">
-                <input type="file" accept="image/*" (change)="onReplaceImage(p, $event)">
-                <button class="btn" (click)="save(p)">บันทึก</button>
-                <button class="btn danger" (click)="remove(p.id)">ลบ</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="panel admin-card">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">รายการสินค้า</p>
+            <h3 style="margin:4px 0">แก้ไขได้ทันที</h3>
+            <p class="muted">รองรับการสกรอลล์ในมือถือ เซลล์พับบรรทัดยาวให้อ่านง่าย</p>
+          </div>
+          <div class="pill pill-ghost">แก้ไขแล้วจะเซฟทันที</div>
+        </div>
+        <div class="table-wrap admin-table-wrap">
+          <table class="table admin-table">
+            <thead><tr><th style="width:120px">รูป</th><th>ชื่อ</th><th style="width:110px">ราคา</th><th style="width:180px">หน่วย/หมวด</th><th>SKU</th><th>รายละเอียด</th><th style="width:220px">จัดการ</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let p of ps.products(); trackBy: track">
+                <td><img class="preview" [src]="p.image" alt=""></td>
+                <td><input class="input" [(ngModel)]="p.name"></td>
+                <td><input class="input" type="number" [(ngModel)]="p.price"></td>
+                <td>
+                  <input class="input" [(ngModel)]="p.unit"><br/>
+                  <input class="input" [(ngModel)]="p.category">
+                </td>
+                <td><input class="input" [(ngModel)]="p.sku"></td>
+                <td><textarea class="input" rows="3" [(ngModel)]="p.description"></textarea></td>
+                <td class="tr-actions admin-row-actions">
+                  <input type="file" accept="image/*" (change)="onReplaceImage(p, $event)">
+                  <button class="btn" (click)="save(p)">บันทึก</button>
+                  <button class="btn danger" (click)="remove(p.id)">ลบ</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </section>

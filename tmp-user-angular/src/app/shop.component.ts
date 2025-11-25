@@ -174,6 +174,5 @@ export class ShopComponent {
     (window as any).location.href = url;
   }
 
-  cartCount(){ return this.cart().reduce((sum, it) => sum + it.qty, 0); }
   cartTotal(){ return this.cart().reduce((sum, it) => sum + (it.product.price * it.qty), 0); }
 }

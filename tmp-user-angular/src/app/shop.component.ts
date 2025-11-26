@@ -89,13 +89,14 @@ import { ProductService, Product } from './product.service';
     <div *ngIf="!cart().length" class="small">ยังไม่มีสินค้าในตะกร้า</div>
     <div class="table-wrap" *ngIf="cart().length">
       <table class="table">
-        <thead><tr><th>สินค้า</th><th>จำนวน</th><th>ราคา/หน่วย</th><th>รวม</th></tr></thead>
+        <thead><tr><th>สินค้า</th><th>จำนวน</th><th>ราคา/หน่วย</th><th>รวม</th><th></th></tr></thead>
         <tbody>
           <tr *ngFor="let it of cart()">
             <td>{{ it.product.name }}</td>
             <td><input class="input qty-input" type="number" min="0" [value]="it.qty" (input)="updateQty(it.product, $any($event.target).valueAsNumber)"></td>
             <td>{{ it.product.price | number:'1.0-0' }} ฿</td>
             <td>{{ (it.product.price * it.qty) | number:'1.0-0' }} ฿</td>
+            <td><button class="btn ghost" type="button" (click)="removeFromCart(it.product)">ลบ</button></td>
           </tr>
         </tbody>
       </table>
@@ -174,6 +175,11 @@ export class ShopComponent {
     const found = bag.find(i => i.product.id === p.id);
     if (found) found.qty += qty; else bag.push({product: p, qty});
     this.cart.set(bag); this.saveCart();
+  }
+  removeFromCart(p: Product){
+    const bag = this.cart().filter(i => i.product.id !== p.id);
+    this.cart.set(bag);
+    this.saveCart();
   }
   updateQty(p: Product, qty: number){
     const n = Math.max(0, qty||0);

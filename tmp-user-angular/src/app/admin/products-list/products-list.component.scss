@@ -1,98 +1,224 @@
-.products-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
+/* ===============================
+   รายการสินค้า (ตารางแก้ไขได้ทันที)
+   =============================== */
+
+/* กล่องหุ้มตาราง */
+.admin-table-wrap {
+  width: 100%;
+  margin-top: 8px;
+  overflow-x: auto;      /* ถ้าหน้าจอแคบมาก ๆ จะเลื่อนได้ */
 }
 
-.product-card {
-  border-radius: 16px;
+/* ตัวตารางหลัก */
+.admin-table {
+  width: 100%;
+  max-width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  table-layout: fixed;   /* ช่วยไม่ให้คอลัมน์แหกกว้างเกิน */
+}
+
+/* หัวตาราง – desktop */
+.admin-table thead th {
+  padding: 8px 10px;
+  text-align: left;
+  font-weight: 600;
+  color: #6b7280;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+/* แถวข้อมูล */
+.admin-table tbody tr {
   background: #ffffff;
-  padding: 12px 16px;
-  margin-bottom: 12px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
 }
 
-.product-card__top {
-  display: flex;
-  gap: 12px;
-  align-items: center;
+.admin-table tbody tr:nth-child(even) {
+  background: #fafbff;
 }
 
-.product-card__image {
-  padding: 8px;
+.admin-table tbody td {
+  padding: 8px 10px;
+  vertical-align: top;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+/* เซลล์ + label (ใช้บนมือถือด้วย) */
+.admin-table .cell {
+  position: relative;
+}
+
+/* ----------------------------------
+   รูปสินค้า – ใช้ preview-frame เดิม
+   ---------------------------------- */
+
+/* เบส: ใช้ได้ทั้ง desktop + mobile, แล้วค่อย override ใน media */
+.admin-table .image-cell .preview-frame {
+  margin: 0;
+  width: 120px;
+  height: 80px;             /* ตัด height เดิมที่สูงมากออก */
+  padding: 4px 6px;
   border-radius: 12px;
-  background: linear-gradient(135deg, rgba(224, 242, 254, 0.4), rgba(236, 254, 255, 0.4));
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  max-width: 120px;
+  box-sizing: border-box;
 }
 
-.product-card__image img {
-  max-height: 80px;
+.admin-table .image-cell .preview-frame .preview {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
   width: auto;
+  height: auto;
   object-fit: contain;
 }
 
-.product-card__summary {
-  flex: 1;
+/* กันล้นคอลัมน์รูป */
+.admin-table .image-cell {
+  overflow: hidden;
+}
+
+/* ----------------------------------
+   ราคา & SKU – ทำให้เล็กลง
+   ---------------------------------- */
+
+@media (min-width: 769px) {
+  /* ราคา */
+  .admin-table .price-cell {
+    width: 80px;
+  }
+
+  .admin-table .price-cell .input {
+    max-width: 70px;
+    font-size: 13px;
+    padding-inline: 6px;
+    text-align: right;
+  }
+
+  /* SKU */
+  .admin-table td[data-label="SKU"] {
+    width: 100px;
+    white-space: nowrap;
+  }
+
+  .admin-table td[data-label="SKU"] .input {
+    max-width: 90px;
+    font-size: 13px;
+    padding-inline: 6px;
+  }
+}
+
+/* ----------------------------------
+   คอลัมน์ปุ่มจัดการ
+   ---------------------------------- */
+
+.admin-row-actions {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-}
-
-.product-card__price-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 8px;
-}
-
-.product-card__chip-row {
-  display: flex;
   gap: 6px;
-  flex-wrap: wrap;
 }
 
-.product-card__fields {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px;
+.admin-row-actions input[type='file'] {
+  font-size: 12px;
 }
 
-.product-card__actions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.admin-row-actions .btn {
+  width: 100%;
 }
 
-.product-card__upload input[type="file"] {
-  max-width: 100%;
+/* textarea ให้ไม่กินพื้นที่เกิน */
+.admin-table textarea.input {
+  min-height: 72px;
+  resize: vertical;
 }
 
-.product-card__buttons {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.product-card__buttons .btn {
-  flex: 1;
-  min-width: 120px;
-}
-
-@media (max-width: 640px) {
-  .product-card__top {
-    align-items: flex-start;
+/* ================== มือถือ / จอเล็ก ================== */
+@media (max-width: 768px) {
+  /* เปลี่ยนตารางให้เป็น card ต่อสินค้า */
+  .admin-table {
+    border-collapse: separate;
+    border-spacing: 0 12px;
   }
 
-  .product-card__image {
-    max-width: 96px;
+  .admin-table thead {
+    display: none;
   }
 
-  .product-card__buttons .btn {
-    flex: 1 1 100%;
+  .admin-table tbody {
+    display: block;
+  }
+
+  .admin-table tbody tr {
+    display: block;
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+    padding: 10px 12px;
+    border-bottom: none;
+  }
+
+  .admin-table tbody td {
+    display: block;
+    width: 100%;
+    border-bottom: none;
+    padding: 6px 0;
+  }
+
+  /* label เหนือแต่ละ field ใช้จาก data-label */
+  .admin-table tbody td.cell::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: none;
+    color: #9ca3af;
+    margin-bottom: 2px;
+  }
+
+  /* ----- กล่องรูปให้เหมือน preview-frame ด้านบน ----- */
+
+  /* ไม่ต้องโชว์คำว่า "รูป" ซ้ำ */
+  .admin-table tbody td.image-cell::before {
+    display: none;
+  }
+
+  /* ทำกรอบรูปให้เต็มการ์ด เหมือนกล่อง preview ด้านบน */
+  .admin-table tbody td.image-cell {
+    padding: 0 0 10px;
+  }
+
+  .admin-table .image-cell .preview-frame {
+    width: 100%;
+    height: 180px;          /* สูงใกล้กล่องบน ถ้าอยากเตี้ย/สูง ปรับเลขนี้ได้เลย */
+    padding: 8px 12px;
+    border-radius: 16px;
+  }
+
+  .admin-table .image-cell .preview-frame .preview {
+    width: 100%;
+    max-height: 100%;
+  }
+
+  /* ราคา / SKU บนมือถือ – ฟอนต์เล็กลงนิดนึง */
+  .admin-table .price-cell .input,
+  .admin-table td[data-label="SKU"] .input {
+    font-size: 13px;
+  }
+
+  /* คอลัมน์จัดการ – ขีดคั่นด้านบน + ปุ่มเรียงลงมา */
+  .admin-table tbody td.tr-actions {
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 1px dashed #e5e7eb;
+  }
+
+  .admin-row-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-row-actions .btn {
+    flex: 1 1 auto;
   }
 }

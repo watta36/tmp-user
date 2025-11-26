@@ -31,6 +31,34 @@
       <div class="panel admin-card">
         <div class="panel-header">
           <div>
+            <p class="eyebrow">จัดการหมวดหมู่</p>
+            <h3 style="margin:4px 0">แก้ไข/เพิ่มหมวดหมู่ที่จะใช้ในร้าน</h3>
+            <p class="muted">หมวดหมู่ในส่วนนี้จะไปแสดงในหน้าร้านและเป็นตัวเลือกในฟอร์มเพิ่มสินค้า</p>
+          </div>
+          <div class="pill pill-ghost">หมวดหมู่ {{ ps.categories().length }} รายการ</div>
+        </div>
+        <div class="category-add-row">
+          <input class="input" [(ngModel)]="catInput" placeholder="เพิ่มหมวดหมู่ใหม่ เช่น กุ้ง / ปลา">
+          <button class="btn primary" type="button" (click)="addCategory()">เพิ่ม</button>
+        </div>
+        <p class="small muted">* หากเปลี่ยนชื่อหมวดหมู่ สินค้าเดิมที่ใช้ชื่อเดิมจะถูกอัปเดตอัตโนมัติ</p>
+        <div class="category-list" *ngIf="ps.categories().length; else noCategories">
+          <div class="category-row" *ngFor="let cat of ps.categories(); trackBy: trackCat">
+            <input class="input" [ngModel]="catEdit[cat] ?? cat" (ngModelChange)="editCategory(cat, $event)">
+            <div class="category-row__actions">
+              <button class="btn" type="button" (click)="saveCategory(cat)">บันทึก</button>
+              <button class="btn danger ghost" type="button" (click)="removeCategory(cat)">ลบ</button>
+            </div>
+          </div>
+        </div>
+        <ng-template #noCategories>
+          <div class="muted">ยังไม่มีหมวดหมู่ โปรดเพิ่มอย่างน้อย 1 รายการ</div>
+        </ng-template>
+      </div>
+
+      <div class="panel admin-card">
+        <div class="panel-header">
+          <div>
             <p class="eyebrow">การจัดการร้าน</p>
             <h3 style="margin:4px 0">เพิ่ม / อัปเดตสินค้า</h3>
             <p class="muted">ออกแบบใหม่ให้ดูสะอาด ใช้ง่าย ทั้งบนมือถือและเดสก์ท็อป</p>
@@ -57,7 +85,13 @@
           <div><label class="small">ชื่อสินค้า</label><input class="input" [(ngModel)]="draft.name" placeholder="เช่น กุ้งสด 1 กก."></div>
           <div><label class="small">ราคา (บาท)</label><input class="input" type="number" [(ngModel)]="draft.price" placeholder="0"></div>
           <div><label class="small">หน่วย</label><input class="input" [(ngModel)]="draft.unit" placeholder="แพ็ค / กก. / ชิ้น"></div>
-          <div><label class="small">หมวดหมู่</label><input class="input" [(ngModel)]="draft.category" placeholder="กุ้ง / ปลา / ซอส"></div>
+          <div>
+            <label class="small">หมวดหมู่</label>
+            <input class="input" [(ngModel)]="draft.category" placeholder="กุ้ง / ปลา / ซอส" list="category-options">
+            <datalist id="category-options">
+              <option *ngFor="let c of ps.categories()" [value]="c"></option>
+            </datalist>
+          </div>
           <div><label class="small">SKU</label><input class="input" [(ngModel)]="draft.sku" placeholder="ใส่หรือเว้นว่าง"></div>
           <div class="full-row"><label class="small">รายละเอียด</label><textarea class="input" rows="3" [(ngModel)]="draft.description" placeholder="จุดเด่น หรือวิธีใช้คร่าวๆ"></textarea></div>
           <div class="full-row upload-row">
@@ -106,7 +140,7 @@
                 <td class="cell stack-cell" data-label="หน่วย/หมวด">
                   <div class="stack-cell__inputs">
                     <input class="input" [(ngModel)]="p.unit">
-                    <input class="input" [(ngModel)]="p.category">
+                    <input class="input" [(ngModel)]="p.category" list="category-options">
                   </div>
                 </td>
                 <td class="cell sku-cell" data-label="SKU"><input class="input" [(ngModel)]="p.sku"></td>

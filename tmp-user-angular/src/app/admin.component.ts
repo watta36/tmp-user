@@ -15,8 +15,6 @@ type Draft = Omit<Product, 'id'>;
   styleUrls: ['./admin/products-list/products-list.component.scss']
 })
 export class AdminComponent {
-  username = '';
-  password = '';
   catInput = '';
   catEdit: Record<string, string> = {};
   draft: Draft = {
@@ -75,12 +73,6 @@ export class AdminComponent {
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
-  }
-
-  doLogin() {
-    if (!this.auth.login(this.username.trim(), this.password)) {
-      alert('เข้าสู่ระบบไม่สำเร็จ');
-    }
   }
 
   logout() {

@@ -62,14 +62,19 @@
           <div class="full-row"><label class="small">รายละเอียด</label><textarea class="input" rows="3" [(ngModel)]="draft.description" placeholder="จุดเด่น หรือวิธีใช้คร่าวๆ"></textarea></div>
           <div class="full-row upload-row">
             <div>
-              <label class="small">รูปสินค้า (อัปโหลดไฟล์)</label>
-              <input type="file" accept="image/*" (change)="onUploadNew($event)">
-              <p class="small muted" style="margin-top:4px">บันทึกเป็น Data URL ในเครื่อง ไม่พึ่งลิงก์ภายนอก</p>
+              <label class="small">รูปสินค้า (อัปโหลดได้หลายไฟล์)</label>
+              <input type="file" accept="image/*" multiple (change)="onUploadNew($event)">
+              <p class="small muted" style="margin-top:4px">บันทึกเป็น Data URL ในเครื่อง ไม่พึ่งลิงก์ภายนอก • เลือกหลายรูปได้พร้อมกัน</p>
             </div>
-            <div class="image-chip" *ngIf="draft.image">พร้อมใช้งาน</div>
+            <div class="image-chip" *ngIf="draft.images?.length">{{ draft.images.length }} รูป</div>
           </div>
         </div>
-        <div *ngIf="draft.image" class="preview-frame"><img class="preview" [src]="draft.image" alt=""></div>
+        <div *ngIf="draft.images?.length" class="preview-grid">
+          <div class="preview-tile" *ngFor="let img of draft.images; let i = index">
+            <img class="preview" [src]="img" alt="">
+            <button class="btn tiny" type="button" (click)="removeDraftImage(i)">ลบ</button>
+          </div>
+        </div>
         <div class="action-row">
           <button class="btn primary" (click)="add()">เพิ่มสินค้า</button>
           <button class="btn" (click)="clearDraft()">ล้างฟอร์ม</button>
@@ -94,6 +99,7 @@
                   <div class="preview-frame preview-frame--row">
                     <img class="preview" [src]="p.image" alt="">
                   </div>
+                  <div class="small muted" *ngIf="p.images?.length && p.images.length > 1">{{ p.images.length }} รูป</div>
                 </td>
                 <td class="cell" data-label="ชื่อ"><textarea class="input" rows="3" [(ngModel)]="p.name"></textarea></td>
                 <td class="cell price-cell"  data-label="ราคา"><input class="input" type="number" [(ngModel)]="p.price"></td>
@@ -111,6 +117,11 @@
                       <span class="glyph" aria-hidden="true">📁</span>
                       <span class="label">รูป</span>
                       <input type="file" accept="image/*" (change)="onReplaceImage(p, $event)">
+                    </label>
+                    <label class="pill-btn ghost" title="เพิ่มรูป" aria-label="เพิ่มรูป">
+                      <span class="glyph" aria-hidden="true">➕</span>
+                      <span class="label">เพิ่ม</span>
+                      <input type="file" accept="image/*" multiple (change)="onAddImages(p, $event)">
                     </label>
                     <button class="pill-btn success" title="บันทึก" aria-label="บันทึก" (click)="save(p)">
                       <span class="glyph" aria-hidden="true">💾</span>

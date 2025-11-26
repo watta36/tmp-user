@@ -58,6 +58,7 @@ import { ProductService, Product } from './product.service';
           <div class="product-img-frame">
             <img [src]="imgSrc(p)" [alt]="p.name" (click)="openDetail(p)" class="product-img">
           </div>
+          <div class="gallery-pill" *ngIf="productImages(p).length > 1">{{ productImages(p).length }} รูป</div>
           <div class="sku-pill" *ngIf="p.sku">SKU {{ p.sku }}</div>
           <div class="tag">{{ iconFor(p.category) }} {{ p.category }}</div>
         </div>
@@ -113,6 +114,32 @@ import { ProductService, Product } from './product.service';
       <button class="btn primary" (click)="orderCart()">สั่งสินค้าทั้งตะกร้าผ่าน LINE</button>
     </div>
   </section>
+
+  <div class="lightbox" *ngIf="detailProduct() as dp">
+    <div class="lightbox__backdrop" (click)="closeDetail()"></div>
+    <div class="lightbox__dialog">
+      <button class="lightbox__close" type="button" (click)="closeDetail()">×</button>
+      <div class="lightbox__media">
+        <button class="lightbox__nav" type="button" (click)="prevImage()" aria-label="previous">‹</button>
+        <img [src]="currentDetailImage()" [alt]="dp.name">
+        <button class="lightbox__nav" type="button" (click)="nextImage()" aria-label="next">›</button>
+      </div>
+      <div class="lightbox__thumbs" *ngIf="productImages(dp).length > 1">
+        <img *ngFor="let img of productImages(dp); let i = index" [src]="img" [alt]="dp.name" [class.active]="i === detailIndex()" (click)="detailIndex.set(i)">
+      </div>
+      <div class="lightbox__info">
+        <div>
+          <p class="smallcaps eyebrow">{{ iconFor(dp.category) }} {{ dp.category }}</p>
+          <h3>{{ dp.name }}</h3>
+          <p class="muted">{{ dp.description || 'รายละเอียดสินค้า' }}</p>
+        </div>
+        <div class="price-block">
+          <div class="price">{{ dp.price | number:'1.0-0' }} ฿</div>
+          <div class="unit muted">/ {{ dp.unit }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
   `
 })
 export class ShopComponent {
@@ -120,11 +147,14 @@ export class ShopComponent {
   sort: 'latest' | 'price-asc' | 'price-desc' | 'name' = 'latest';
   activeCat = signal<string>('');
   cart = signal<{product: Product; qty: number}[]>(JSON.parse(localStorage.getItem('tmp_cart')||'[]'));
+  detailProduct = signal<Product | null>(null);
+  detailIndex = signal(0);
 
   constructor(public ps: ProductService){}
 
   cats = computed(() => this.ps.categories());
-  imgSrc(p: Product){ return p.image || ''; }
+  imgSrc(p: Product){ return this.productImages(p)[0] || ''; }
+  productImages(p: Product){ return (p.images && p.images.length ? p.images : (p.image ? [p.image] : [])).filter(Boolean); }
 
   selectCat(c: string){ this.activeCat.set(c); }
   iconFor(c: string){
@@ -173,7 +203,31 @@ export class ShopComponent {
     const summary = `ยอดรวม ${this.cartTotal().toLocaleString('th-TH')} ฿`;
     this.openLine(`สั่งซื้อสินค้าทั้งตะกร้า:\n${lines.join('\n')}\n${summary}`);
   }
-  openDetail(p: Product){ alert(`${p.name}\nราคา ${p.price} ฿/${p.unit}\n${p.description||''}`); }
+  openDetail(p: Product){
+    this.detailProduct.set(p);
+    this.detailIndex.set(0);
+  }
+  closeDetail(){ this.detailProduct.set(null); }
+  currentDetailImage(){
+    const p = this.detailProduct();
+    if (!p) return '';
+    const imgs = this.productImages(p);
+    return imgs[this.detailIndex()] || imgs[0] || '';
+  }
+  nextImage(){
+    const p = this.detailProduct();
+    if (!p) return;
+    const imgs = this.productImages(p);
+    if (!imgs.length) return;
+    this.detailIndex.set((this.detailIndex() + 1) % imgs.length);
+  }
+  prevImage(){
+    const p = this.detailProduct();
+    if (!p) return;
+    const imgs = this.productImages(p);
+    if (!imgs.length) return;
+    this.detailIndex.set((this.detailIndex() - 1 + imgs.length) % imgs.length);
+  }
   openLine(text: string){
     const LINE_ID = '@tmpseafood';
     const url = `https://line.me/R/oaMessage/${encodeURIComponent(LINE_ID)}/?${encodeURIComponent(text)}`;

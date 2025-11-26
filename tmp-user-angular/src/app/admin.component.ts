@@ -26,6 +26,7 @@ export class AdminComponent {
     description: '',
     slug: '',
     image: '',
+    images: [],
   };
   importing = signal(false);
 
@@ -33,9 +34,12 @@ export class AdminComponent {
 
   async onUploadNew(ev: Event) {
     const input = ev.target as HTMLInputElement;
-    const f = input.files?.[0];
-    if (!f) return;
-    this.draft.image = await this.toDataUrl(f);
+    const files = Array.from(input.files || []);
+    if (!files.length) return;
+    const urls = await Promise.all(files.map((f) => this.toDataUrl(f)));
+    this.draft.images = [...(this.draft.images || []), ...urls];
+    this.draft.image = this.draft.images[0] || '';
+    input.value = '';
   }
 
   async onReplaceImage(p: Product, ev: Event) {
@@ -43,8 +47,23 @@ export class AdminComponent {
     const f = input.files?.[0];
     if (!f) return;
     const data = await this.toDataUrl(f);
-    this.ps.update(p.id, { image: data });
+    this.ps.update(p.id, { image: data, images: [data] });
     input.value = '';
+  }
+
+  async onAddImages(p: Product, ev: Event) {
+    const input = ev.target as HTMLInputElement;
+    const files = Array.from(input.files || []);
+    if (!files.length) return;
+    const urls = await Promise.all(files.map((f) => this.toDataUrl(f)));
+    const merged = [...(p.images || []), ...urls];
+    this.ps.update(p.id, { images: merged, image: merged[0] });
+    input.value = '';
+  }
+
+  removeDraftImage(idx: number) {
+    this.draft.images = (this.draft.images || []).filter((_, i) => i !== idx);
+    this.draft.image = this.draft.images[0] || '';
   }
 
   toDataUrl(file: File): Promise<string> {
@@ -103,6 +122,7 @@ export class AdminComponent {
       description: '',
       slug: '',
       image: '',
+      images: [],
     };
   }
 

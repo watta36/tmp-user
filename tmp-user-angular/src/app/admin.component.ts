@@ -27,6 +27,7 @@ export class AdminComponent {
     slug: '',
     image: '',
   };
+  importing = signal(false);
 
   constructor(public ps: ProductService, public auth: AuthService) {}
 
@@ -67,6 +68,29 @@ export class AdminComponent {
 
   reset() {
     if (confirm('รีเซ็ตข้อมูลเป็นค่าเริ่มต้น?')) this.ps.resetToSeed();
+  }
+
+  exportCsv() { this.ps.exportToCsv(); }
+
+  async importCsv(ev: Event) {
+    const input = ev.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    this.importing.set(true);
+    try {
+      const result = await this.ps.importFromCsv(file);
+      alert(`นำเข้า ${result.imported} รายการ (ข้าม ${result.skipped} รายการที่ไม่ครบข้อมูล)`);
+    } catch (err) {
+      console.error(err);
+      alert('นำเข้าไฟล์ไม่สำเร็จ กรุณาตรวจสอบไฟล์ CSV');
+    } finally {
+      this.importing.set(false);
+      input.value = '';
+    }
+  }
+
+  clearAllProducts() {
+    if (confirm('ลบสินค้าทั้งหมดในระบบ?')) this.ps.clearAll();
   }
 
   clearDraft() {

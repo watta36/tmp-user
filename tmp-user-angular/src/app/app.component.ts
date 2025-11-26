@@ -7,7 +7,7 @@ import { RouterOutlet, RouterLink } from '@angular/router';
   imports: [RouterOutlet, RouterLink],
   template: `
   <nav class="nav">
-    <div class="brand">TMP Shop (Angular)</div>
+    <div class="brand">TMP Shop</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <a class="btn" routerLink="/">ร้านค้า</a>
     </div>

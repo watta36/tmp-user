@@ -9,12 +9,8 @@ import { ProductService, Product } from './product.service';
   template: `
   <section class="container hero hero-shop">
     <div class="hero-copy">
-      <p class="eyebrow">TMP Shop (Angular)</p>
-      <h1 class="hero-title">ทะเลสดพร้อมเสิร์ฟ ส่งเร็วทุกวัน</h1>
-      <p class="muted">คัดสรรวัตถุดิบทะเลและซอสปรุงรสอย่างดี อัปเดตราคาล่าสุด พร้อมส่งถึงคุณในไม่กี่ขั้นตอน</p>
       <div class="action-row">
         <button class="btn primary" (click)="openLine('สอบถามสินค้า / สต็อก')">แชทกับทีม TMP</button>
-        <div class="chip">จัดส่งทุกวัน • มีเจ้าหน้าที่ช่วยแพ็ก</div>
       </div>
     </div>
     <div class="hero-panel">

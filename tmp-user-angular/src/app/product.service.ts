@@ -67,5 +67,6 @@ export class ProductService {
     this.products.set(this.products().filter(p => p.id !== id));
     this.save();
   }
+  reloadFromStorage() { this.products.set(this.load()); }
   resetToSeed() { this.products.set(SEED); this.save(); }
 }

@@ -102,6 +102,10 @@ export class AdminComponent {
     this.ps.update(p.id, patch);
   }
 
+  cancelEdits() {
+    this.ps.reloadFromStorage();
+  }
+
   remove(id: number) {
     if (confirm('ลบสินค้านี้?')) this.ps.remove(id);
   }

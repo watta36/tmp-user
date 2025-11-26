@@ -79,26 +79,45 @@
         </div>
         <div class="table-wrap admin-table-wrap">
           <table class="table admin-table">
-            <thead><tr><th style="width:180px">รูป</th><th>ชื่อ</th><th style="width:110px">ราคา</th><th style="width:180px">หน่วย/หมวด</th><th>SKU</th><th>รายละเอียด</th><th style="width:220px">จัดการ</th></tr></thead>
+            <thead><tr><th style="width:104px">รูป</th><th>ชื่อ</th><th style="width:64px">ราคา</th><th style="width:138px">หน่วย/หมวด</th><th style="width:68px">SKU</th><th>รายละเอียด</th><th style="width:170px">จัดการ</th></tr></thead>
             <tbody>
               <tr *ngFor="let p of ps.products(); trackBy: track">
-<td class="cell image-cell" data-label="รูป">
-  <div class="preview-frame preview-frame--row">
-    <img class="preview" [src]="p.image" alt="">
-  </div>
-</td>
-                <td class="cell" data-label="ชื่อ"> <textarea class="input" rows="3" [(ngModel)]="p.name"></textarea></td>
-                <td class="cell price-cell"  data-label="ราคา"><input class="input" type="number" [(ngModel)]="p.price"></td>
-                <td class="cell" data-label="หน่วย/หมวด">
-                  <input class="input" [(ngModel)]="p.unit"><br/>
-                  <input class="input" [(ngModel)]="p.category">
+                <td class="cell image-cell" data-label="รูป">
+                  <div class="preview-frame preview-frame--row">
+                    <img class="preview" [src]="p.image" alt="">
+                  </div>
                 </td>
-                <td class="cell" data-label="SKU"><input class="input" [(ngModel)]="p.sku"></td>
+                <td class="cell" data-label="ชื่อ"><textarea class="input" rows="3" [(ngModel)]="p.name"></textarea></td>
+                <td class="cell price-cell"  data-label="ราคา"><input class="input" type="number" [(ngModel)]="p.price"></td>
+                <td class="cell stack-cell" data-label="หน่วย/หมวด">
+                  <div class="stack-cell__inputs">
+                    <input class="input" [(ngModel)]="p.unit">
+                    <input class="input" [(ngModel)]="p.category">
+                  </div>
+                </td>
+                <td class="cell sku-cell" data-label="SKU"><input class="input" [(ngModel)]="p.sku"></td>
                 <td class="cell" data-label="รายละเอียด"><textarea class="input" rows="3" [(ngModel)]="p.description"></textarea></td>
                 <td class="cell tr-actions admin-row-actions" data-label="จัดการ">
-                  <input type="file" accept="image/*" (change)="onReplaceImage(p, $event)">
-                  <button class="btn" (click)="save(p)">บันทึก</button>
-                  <button class="btn danger" (click)="remove(p.id)">ลบ</button>
+                  <div class="action-grid">
+                    <label class="pill-btn ghost" title="เปลี่ยนรูป" aria-label="เปลี่ยนรูป">
+                      <span class="glyph" aria-hidden="true">📁</span>
+                      <span class="label">รูป</span>
+                      <input type="file" accept="image/*" (change)="onReplaceImage(p, $event)">
+                    </label>
+                    <button class="pill-btn success" title="บันทึก" aria-label="บันทึก" (click)="save(p)">
+                      <span class="glyph" aria-hidden="true">💾</span>
+                      <span class="label">บันทึก</span>
+                    </button>
+                    <button class="pill-btn ghost" title="ยกเลิก" aria-label="ยกเลิก" (click)="cancelEdits()">
+                      <span class="glyph" aria-hidden="true">↩</span>
+                      <span class="label">ยกเลิก</span>
+                    </button>
+                    <button class="pill-btn danger" title="ลบ" aria-label="ลบ" (click)="remove(p.id)">
+                      <span class="glyph" aria-hidden="true">🗑</span>
+                      <span class="label">ลบ</span>
+                    </button>
+                  </div>
+                  <div class="action-subtext">ปุ่มเล็กกดง่าย ไม่เบียดข้อความ</div>
                 </td>
               </tr>
             </tbody>

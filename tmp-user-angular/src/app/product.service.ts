@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, OnDestroy, signal } from '@angular/core';
 
 export type Product = {
   id: number;
@@ -139,8 +139,13 @@ const SEED: Product[] = [
 ];
 
 @Injectable({ providedIn: 'root' })
-export class ProductService {
+export class ProductService implements OnDestroy {
   products = signal<Product[]>(this.load());
+  private storageHandler?: (ev: StorageEvent) => void;
+
+  constructor() {
+    this.listenToStorageChanges();
+  }
 
   private load(): Product[] {
     try {
@@ -305,5 +310,20 @@ export class ProductService {
     if (Array.isArray(p.images)) imgs.push(...p.images.filter(Boolean));
     if (p.image) imgs.unshift(p.image);
     return Array.from(new Set(imgs.filter(Boolean)));
+  }
+
+  ngOnDestroy(): void {
+    if (this.storageHandler && typeof window !== 'undefined') {
+      window.removeEventListener('storage', this.storageHandler);
+    }
+  }
+
+  private listenToStorageChanges() {
+    if (typeof window === 'undefined' || !window.addEventListener) return;
+    this.storageHandler = (ev: StorageEvent) => {
+      if (ev.key && ev.key !== STORAGE_KEY) return;
+      this.reloadFromStorage();
+    };
+    window.addEventListener('storage', this.storageHandler);
   }
 }

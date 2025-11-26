@@ -69,4 +69,112 @@ export class ProductService {
   }
   reloadFromStorage() { this.products.set(this.load()); }
   resetToSeed() { this.products.set(SEED); this.save(); }
+  clearAll() { this.products.set([]); this.save(); }
+
+  exportToCsv(filename = 'products.csv') {
+    const headers = ['id', 'name', 'price', 'unit', 'category', 'sku', 'description', 'slug', 'image'] as const;
+    const rows = this.products().map((p) => headers.map((k) => this.escapeCsv((p as any)[k])));
+    const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async importFromCsv(file: File) {
+    const text = await file.text();
+    const rows = this.parseCsv(text);
+    if (!rows.length) throw new Error('ไฟล์ว่าง');
+
+    const headers = rows[0].map((h) => h.trim());
+    const records = rows.slice(1).map((cells) => this.cellsToRecord(headers, cells));
+    const products: Product[] = [];
+    let skipped = 0;
+    for (const r of records) {
+      const p = this.recordToProduct(r);
+      if (p) products.push(p); else skipped++;
+    }
+
+    const deduped = this.dedupById(products);
+    this.products.set(deduped);
+    this.save();
+    return { imported: deduped.length, skipped };
+  }
+
+  private escapeCsv(v: unknown) {
+    const raw = v === undefined || v === null ? '' : String(v);
+    if (/[",\n]/.test(raw)) {
+      return '"' + raw.replace(/"/g, '""') + '"';
+    }
+    return raw;
+  }
+
+  private parseCsv(text: string): string[][] {
+    const rows: string[][] = [];
+    let current = '';
+    let row: string[] = [];
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (inQuotes) {
+        if (ch === '"') {
+          if (text[i + 1] === '"') { current += '"'; i++; }
+          else { inQuotes = false; }
+        } else current += ch;
+      } else {
+        if (ch === '"') inQuotes = true;
+        else if (ch === ',') { row.push(current); current = ''; }
+        else if (ch === '\n') { row.push(current); rows.push(row); row = []; current = ''; }
+        else if (ch === '\r') { /* ignore */ }
+        else current += ch;
+      }
+    }
+    if (current || row.length) { row.push(current); rows.push(row); }
+    return rows.filter(r => r.some(cell => cell.trim() !== ''));
+  }
+
+  private cellsToRecord(headers: string[], cells: string[]) {
+    const rec: Record<string, string> = {};
+    headers.forEach((h, idx) => rec[h || `col_${idx}`] = cells[idx] ?? '');
+    return rec;
+  }
+
+  private recordToProduct(r: Record<string, string>): Product | null {
+    const id = Number(r.id ?? r.ID ?? r.Id ?? r['รหัส']);
+    const name = (r.name ?? r.Name ?? '').toString().trim();
+    const price = Number(r.price ?? r.Price ?? 0);
+    const unit = (r.unit ?? r.Unit ?? '').toString().trim();
+    const category = (r.category ?? r.Category ?? '').toString().trim();
+    const sku = (r.sku ?? r.SKU ?? '').toString().trim();
+    const description = (r.description ?? r.Description ?? '').toString();
+    const image = (r.image ?? r.Image ?? '').toString();
+    const slug = (r.slug ?? r.Slug ?? '').toString().trim() || this.slugify(name);
+
+    if (!id || !name || !unit || !category || Number.isNaN(price)) return null;
+    return { id, name, price, unit, category, sku, description, image, slug };
+  }
+
+  private dedupById(list: Product[]) {
+    const seen = new Set<number>();
+    const keep: Product[] = [];
+    for (let i = list.length - 1; i >= 0; i--) {
+      const p = list[i];
+      if (seen.has(p.id)) continue;
+      seen.add(p.id);
+      keep.push(p);
+    }
+    return keep.reverse();
+  }
+
+  private slugify(s: string) {
+    return s
+      .toLowerCase()
+      .replace(/[^a-z0-9ก-๙\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .slice(0, 60);
+  }
 }

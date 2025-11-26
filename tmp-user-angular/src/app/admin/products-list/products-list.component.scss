@@ -9,6 +9,23 @@
   overflow-x: auto;      /* ถ้าหน้าจอแคบมาก ๆ จะเลื่อนได้ */
 }
 
+.admin-toolbar {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.file-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.file-btn input[type='file'] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
 /* ตัวตารางหลัก */
 .admin-table {
   width: 100%;

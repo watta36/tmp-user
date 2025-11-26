@@ -43,7 +43,15 @@
         <div class="admin-toolbar">
           <button class="btn" (click)="logout()">Logout</button>
           <button class="btn danger" (click)="reset()">Reset ข้อมูลเริ่มต้น</button>
+          <button class="btn" (click)="exportCsv()">Export เป็น Excel/CSV</button>
+          <label class="btn ghost file-btn">
+            <span *ngIf="!importing()">Import Excel/CSV</span>
+            <span *ngIf="importing()">กำลังนำเข้า...</span>
+            <input type="file" accept=".csv,text/csv" (change)="importCsv($event)" [disabled]="importing()">
+          </label>
+          <button class="btn danger ghost" (click)="clearAllProducts()">ลบสินค้าทั้งหมด</button>
         </div>
+        <p class="small muted">* ส่งออกเป็นไฟล์ CSV (รองรับการเปิดใน Excel) และนำเข้าด้วยไฟล์เดียวกัน รายการเดิมจะถูกแทนที่ให้เหมือนในไฟล์</p>
 
         <div class="form-grid two-col">
           <div><label class="small">ชื่อสินค้า</label><input class="input" [(ngModel)]="draft.name" placeholder="เช่น กุ้งสด 1 กก."></div>

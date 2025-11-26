@@ -15,7 +15,6 @@ import { APP_CONFIG } from './config';
         <div class="brand-mark">TMP</div>
         <div>
           <div class="brand">TMP Shop</div>
-          <div class="nav__subtitle">อาหารทะเลและซอสพร้อมส่ง</div>
         </div>
       </div>
       <div class="nav__links">

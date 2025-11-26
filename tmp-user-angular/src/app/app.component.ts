@@ -1,10 +1,13 @@
 import { Component } from '@angular/core';
 import { RouterOutlet, RouterLink } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { AuthService } from './auth.service';
+import { APP_CONFIG } from './config';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink],
+  imports: [CommonModule, RouterOutlet, RouterLink],
   template: `
   <nav class="nav">
     <div class="container nav__inner">
@@ -17,7 +20,9 @@ import { RouterOutlet, RouterLink } from '@angular/router';
       </div>
       <div class="nav__links">
         <a class="nav__link" routerLink="/">หน้าร้าน</a>
-        <a class="nav__link" routerLink="/admin">หลังร้าน</a>
+        <a class="nav__link" [routerLink]="auth.authed() ? '/' + adminPath : '/login'">
+          {{ auth.authed() ? 'หลังร้าน' : 'เข้าสู่ระบบ' }}
+        </a>
       </div>
     </div>
   </nav>
@@ -27,4 +32,7 @@ import { RouterOutlet, RouterLink } from '@angular/router';
   </footer>
   `
 })
-export class AppComponent {}
+export class AppComponent {
+  adminPath = APP_CONFIG.adminPath;
+  constructor(public auth: AuthService) {}
+}

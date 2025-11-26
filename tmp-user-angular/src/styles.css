@@ -40,13 +40,8 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
 .table-wrap{overflow-x:auto}
 .qty-input{max-width:110px}
 .cart-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap}
-.admin-toolbar,.admin-login-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
-.admin-login-actions{margin-bottom:4px}
-.admin-table-wrap{margin-top:8px}
-.admin-table{min-width:900px}
-.admin-table .input,.admin-table textarea{min-width:140px}
-.admin-table th,.admin-table td{white-space:normal}
-.admin-row-actions{flex-direction:column;align-items:stretch}
+.admin-login-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px;margin-bottom:4px}
+
 .admin-shell{display:flex;flex-direction:column;gap:16px}
 .admin-hero{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:18px 20px;border:1px solid #e2e8f0;border-radius:16px;background:linear-gradient(90deg,#e0f2fe,#f8fafc)}
 .admin-badge{display:inline-flex;align-items:center;gap:6px;padding:10px 12px;border:1px solid #bae6fd;border-radius:12px;background:#fff;color:#0f172a;font-weight:700;white-space:nowrap}
@@ -138,14 +133,4 @@ hr{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
   .product-img-frame{height:240px}
 }
 
-@media(max-width:768px){
-  .admin-table-wrap{overflow:visible}
-  .admin-table{border-collapse:separate;border-spacing:0;width:100%}
-  .admin-table thead{display:none}
-  .admin-table,.admin-table tbody,.admin-table tr,.admin-table td{display:block;width:100%}
-  .admin-table tr{margin:0 0 18px;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 12px 30px -22px rgba(15,23,42,.45);background:#fff}
-  .admin-table td{padding:10px 12px;border:none;border-bottom:1px solid #e2e8f0;display:flex;flex-direction:column;gap:6px}
-  .admin-table td:last-child{border-bottom:none;padding-bottom:12px}
-  .admin-table td::before{content:attr(data-label);font-size:12px;color:#94a3b8;font-weight:700}
-  .admin-row-actions{flex-direction:column;align-items:stretch}
-}
+

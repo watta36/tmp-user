@@ -8,26 +8,7 @@
       <div class="admin-badge">พร้อมใช้งาน ✅</div>
     </header>
 
-    <div *ngIf="!auth.authed()" class="panel admin-card">
-      <div class="panel-header">
-        <div>
-          <p class="eyebrow">เข้าสู่ระบบ</p>
-          <h3 style="margin:4px 0 6px">ล็อกอินผู้ดูแล</h3>
-          <p class="muted">ใช้บัญชีที่กำหนดไว้ใน <code>src/app/config.ts</code> เพื่อเข้าจัดการสินค้า</p>
-        </div>
-        <div class="pill pill-ghost">จำกัดเฉพาะผู้ดูแล</div>
-      </div>
-      <div class="form-grid two-col">
-        <div><label class="small">Username</label><input class="input" [(ngModel)]="username" placeholder="admin"></div>
-        <div><label class="small">Password</label><input class="input" [(ngModel)]="password" type="password" placeholder="1234"></div>
-      </div>
-      <div class="admin-login-actions">
-        <button class="btn primary wide" (click)="doLogin()">Login</button>
-        <span class="small">* รองรับการใช้งานบนมือถือและเดสก์ท็อป</span>
-      </div>
-    </div>
-
-    <div *ngIf="auth.authed()" class="admin-grid">
+    <div class="admin-grid">
       <div class="panel admin-card">
         <div class="panel-header">
           <div>

@@ -19,9 +19,6 @@ import { APP_CONFIG } from './config';
       </div>
       <div class="nav__links">
         <a class="nav__link" routerLink="/">หน้าร้าน</a>
-        <ng-container *ngIf="!auth.authed(); else authedLinks">
-          <a class="nav__link" routerLink="/login">เข้าสู่ระบบ</a>
-        </ng-container>
         <ng-template #authedLinks>
           <button type="button" class="nav__link nav__button" (click)="logout()">ออกจากระบบ</button>
         </ng-template>

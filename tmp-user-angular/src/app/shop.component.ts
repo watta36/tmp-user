@@ -7,13 +7,8 @@ import { ProductService, Product } from './product.service';
   selector: 'app-shop',
   imports: [CommonModule],
   template: `
-  <section class="container hero hero-shop">
-    <div class="hero-copy">
-      <div class="action-row">
-        <button class="btn primary" (click)="openLine('สอบถามสินค้า / สต็อก')">แชทกับทีม TMP</button>
-      </div>
-    </div>
-    <div class="hero-panel">
+  <section class="container hero hero-shop hero-cart">
+    <div class="hero-panel hero-panel--wide">
       <div class="hero-panel-row">
         <div>
           <p class="small label">จำนวนสินค้าในตะกร้า</p>

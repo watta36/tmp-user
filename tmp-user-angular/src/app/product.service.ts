@@ -14,6 +14,7 @@ export type Product = {
 };
 
 const STORAGE_KEY = 'tmp_products_v2';
+const CATEGORY_STORAGE_KEY = 'tmp_categories_v1';
 
 function placeholder(name: string, emoji = '🦐', bg = '#e0f2fe'): string {
   const safe = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -141,6 +142,7 @@ const SEED: Product[] = [
 @Injectable({ providedIn: 'root' })
 export class ProductService implements OnDestroy {
   products = signal<Product[]>(this.load());
+  private categoryOptions = signal<string[]>(this.loadCategories());
   private storageHandler?: (ev: StorageEvent) => void;
 
   constructor() {
@@ -161,24 +163,61 @@ export class ProductService implements OnDestroy {
   }
 
   list() { return this.products(); }
-  categories(): string[] { return Array.from(new Set(this.products().map(p => p.category))).sort(); }
+  categories(): string[] { return this.categoryOptions(); }
+  addCategory(name: string) {
+    const normalized = this.normalizeCategories([name, ...this.categoryOptions()]);
+    this.categoryOptions.set(normalized);
+    this.saveCategories();
+  }
+  renameCategory(prevName: string, nextName: string) {
+    const newName = nextName.trim();
+    if (!newName) return;
+    const updatedList = this.normalizeCategories(this.categoryOptions().map((c) => (c === prevName ? newName : c)));
+    this.categoryOptions.set(updatedList);
+    this.products.set(
+      this.products().map((p) => (p.category === prevName ? this.normalizeProduct({ ...p, category: newName }) : p))
+    );
+    this.save();
+    this.saveCategories();
+  }
+  removeCategory(name: string) {
+    this.categoryOptions.set(this.categoryOptions().filter((c) => c !== name));
+    this.saveCategories();
+    this.products.set(this.products().map((p) => (p.category === name ? this.normalizeProduct({ ...p, category: '' }) : p)));
+    this.save();
+  }
   add(p: Omit<Product, 'id'>) {
     const nextId = Math.max(0, ...this.products().map(x => x.id)) + 1;
     const product = this.normalizeProduct({ id: nextId, ...p } as Product);
     this.products.set([product, ...this.products()]);
+    this.ensureCategoryExists(product.category);
     this.save();
   }
   update(id: number, patch: Partial<Product>) {
     this.products.set(this.products().map(p => p.id === id ? this.normalizeProduct({ ...p, ...patch, id: p.id }) : p));
+    if (patch.category) this.ensureCategoryExists(patch.category);
     this.save();
   }
   remove(id: number) {
     this.products.set(this.products().filter(p => p.id !== id));
     this.save();
   }
-  reloadFromStorage() { this.products.set(this.load()); }
-  resetToSeed() { this.products.set(this.normalizeList(SEED)); this.save(); }
-  clearAll() { this.products.set([]); this.save(); }
+  reloadFromStorage() {
+    this.products.set(this.load());
+    this.categoryOptions.set(this.loadCategories());
+  }
+  resetToSeed() {
+    this.products.set(this.normalizeList(SEED));
+    this.categoryOptions.set(this.normalizeCategories(SEED.map((p) => p.category)));
+    this.saveCategories();
+    this.save();
+  }
+  clearAll() {
+    this.products.set([]);
+    this.categoryOptions.set([]);
+    this.saveCategories();
+    this.save();
+  }
 
   exportToCsv(filename = 'products.csv') {
     const headers = ['id', 'name', 'price', 'unit', 'category', 'sku', 'description', 'slug', 'image', 'images'] as const;
@@ -212,8 +251,24 @@ export class ProductService implements OnDestroy {
 
     const deduped = this.dedupById(products);
     this.products.set(deduped);
+    this.categoryOptions.set(this.normalizeCategories(deduped.map((p) => p.category)));
+    this.saveCategories();
     this.save();
     return { imported: deduped.length, skipped };
+  }
+
+  private loadCategories(): string[] {
+    try {
+      const raw = localStorage.getItem(CATEGORY_STORAGE_KEY);
+      if (raw) return this.normalizeCategories(JSON.parse(raw));
+    } catch {}
+    return this.normalizeCategories(this.products().map((p) => p.category));
+  }
+
+  private saveCategories() {
+    try {
+      localStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(this.categoryOptions()));
+    } catch {}
   }
 
   private escapeCsv(v: unknown) {
@@ -302,7 +357,7 @@ export class ProductService implements OnDestroy {
 
   private normalizeProduct(p: Product): Product {
     const images = this.normalizeImages(p);
-    return { ...p, images, image: images[0] || p.image || '' };
+    return { ...p, images, image: images[0] || p.image || '', category: (p.category || '').trim() };
   }
 
   private normalizeImages(p: Partial<Product>): string[] {
@@ -310,6 +365,17 @@ export class ProductService implements OnDestroy {
     if (Array.isArray(p.images)) imgs.push(...p.images.filter(Boolean));
     if (p.image) imgs.unshift(p.image);
     return Array.from(new Set(imgs.filter(Boolean)));
+  }
+
+  private normalizeCategories(list: string[]): string[] {
+    return Array.from(new Set(list.map((c) => c.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'th'));
+  }
+
+  private ensureCategoryExists(name: string) {
+    const next = name.trim();
+    if (!next || this.categoryOptions().includes(next)) return;
+    this.categoryOptions.set(this.normalizeCategories([...this.categoryOptions(), next]));
+    this.saveCategories();
   }
 
   ngOnDestroy(): void {
@@ -321,7 +387,7 @@ export class ProductService implements OnDestroy {
   private listenToStorageChanges() {
     if (typeof window === 'undefined' || !window.addEventListener) return;
     this.storageHandler = (ev: StorageEvent) => {
-      if (ev.key && ev.key !== STORAGE_KEY) return;
+      if (ev.key && ev.key !== STORAGE_KEY && ev.key !== CATEGORY_STORAGE_KEY) return;
       this.reloadFromStorage();
     };
     window.addEventListener('storage', this.storageHandler);

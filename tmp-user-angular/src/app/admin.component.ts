@@ -17,6 +17,8 @@ type Draft = Omit<Product, 'id'>;
 export class AdminComponent {
   username = '';
   password = '';
+  catInput = '';
+  catEdit: Record<string, string> = {};
   draft: Draft = {
     name: '',
     price: 0,
@@ -137,6 +139,33 @@ export class AdminComponent {
     this.clearDraft();
   }
 
+  addCategory() {
+    const name = this.catInput.trim();
+    if (!name) return;
+    this.ps.addCategory(name);
+    this.catInput = '';
+  }
+
+  editCategory(name: string, value: string) {
+    this.catEdit[name] = value;
+  }
+
+  saveCategory(name: string) {
+    const next = (this.catEdit[name] ?? name).trim();
+    if (!next) {
+      alert('ชื่อหมวดหมู่ห้ามว่าง');
+      return;
+    }
+    this.ps.renameCategory(name, next);
+    delete this.catEdit[name];
+  }
+
+  removeCategory(name: string) {
+    if (!confirm(`ลบหมวดหมู่ "${name}" ? สินค้าเดิมจะถูกลบชื่อหมวดหมู่ออก`)) return;
+    this.ps.removeCategory(name);
+    delete this.catEdit[name];
+  }
+
   save(p: Product) {
     if (!p.name) {
       alert('ชื่อสินค้าห้ามว่าง');
@@ -155,6 +184,7 @@ export class AdminComponent {
   }
 
   track = (_: number, p: Product) => p.id;
+  trackCat = (_: number, name: string) => name;
 
   slugify(s: string) {
     return s

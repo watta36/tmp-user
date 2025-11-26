@@ -1,5 +1,5 @@
 /* ===============================
-   รายการสินค้า (ตารางแก้ไขได้ทันที)
+   Admin – รายการสินค้า (ตารางแก้ไขได้ทันที)
    =============================== */
 
 /* กล่องหุ้มตาราง */
@@ -13,7 +13,7 @@
 .admin-table {
   width: 100%;
   max-width: 100%;
-  min-width: 760px;      /* ลดความกว้างฐานอีกขั้น ให้โต๊ะอยู่ในหน้าเดียวบนจอแล็ปท็อปได้ง่ายขึ้น */
+  min-width: 760px;
   border-collapse: collapse;
   font-size: 13.2px;
   line-height: 1.35;
@@ -22,7 +22,7 @@
 
 /* หัวตาราง – desktop */
 .admin-table thead th {
-  padding: 6px 8px;
+  padding: 6px 8px 8px;
   text-align: left;
   font-weight: 700;
   font-size: 12.5px;
@@ -35,10 +35,15 @@
 /* แถวข้อมูล */
 .admin-table tbody tr {
   background: #ffffff;
+  transition: background 0.08s ease;      /* ให้ hover นุ่ม ๆ */
 }
 
 .admin-table tbody tr:nth-child(even) {
   background: #fafbff;
+}
+
+.admin-table tbody tr:hover {
+  background: #eef2ff;                    /* hover แล้วดูเป็นก้อนขึ้นนิดหน่อย */
 }
 
 .admin-table tbody td {
@@ -55,7 +60,7 @@
   color: #1f2933;
 }
 
-/* เว้นระยะในแต่ละช่องให้หายใจได้มากขึ้น */
+/* input / textarea ในเซลล์ */
 .admin-table .input,
 .admin-table textarea.input {
   width: 100%;
@@ -70,28 +75,26 @@
   max-height: 96px;      /* ให้รายละเอียดไม่กินพื้นที่แนวนอนมากเกินไปบน desktop */
 }
 
+/* stack unit + category */
 .admin-table .stack-cell__inputs {
   display: grid;
   gap: 6px;
 }
 
-.admin-table .stack-cell__inputs .input {
-  min-width: 0;
-}
-
-.admin-table .stack-cell__inputs .input + .input {
-  margin-top: 4px;
+/* textarea ให้ไม่กินพื้นที่เกิน */
+.admin-table textarea.input {
+  min-height: 72px;
+  resize: vertical;
 }
 
 /* ----------------------------------
    รูปสินค้า – ใช้ preview-frame เดิม
    ---------------------------------- */
 
-/* เบส: ใช้ได้ทั้ง desktop + mobile, แล้วค่อย override ใน media */
 .admin-table .image-cell .preview-frame {
   margin: 0;
   width: 104px;
-  height: 74px;             /* ตัด height เดิมที่สูงมากออก */
+  height: 74px;
   padding: 4px 6px;
   border-radius: 12px;
   display: flex;
@@ -115,7 +118,7 @@
 }
 
 /* ----------------------------------
-   ราคา & SKU – ทำให้เล็กลง
+   ราคา & SKU – desktop
    ---------------------------------- */
 
 @media (min-width: 769px) {
@@ -132,21 +135,40 @@
   }
 
   /* SKU */
-  .admin-table td[data-label="SKU"] { width: 68px; white-space: nowrap; }
+  .admin-table td[data-label="SKU"] {
+    width: 68px;
+    white-space: nowrap;
+  }
 
-  .admin-table td[data-label="SKU"] .input { max-width: 58px; font-size: 12px; padding-inline: 6px; text-align: center; }
+  .admin-table td[data-label="SKU"] .input {
+    max-width: 58px;
+    font-size: 12px;
+    padding-inline: 6px;
+    text-align: center;
+  }
+
+  /* เส้นปะคั่นคอลัมน์ปุ่มจัดการ */
+  .admin-table tbody td.tr-actions {
+    border-left: 1px dashed #e5e7eb;
+    padding-left: 12px;
+  }
 }
 
 /* ----------------------------------
    คอลัมน์ปุ่มจัดการ
    ---------------------------------- */
 
-
-.admin-row-actions { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+.admin-row-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+}
 
 .admin-row-actions .action-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(84px, 1fr));
+  /* แบ่ง 2 ช่องให้กินพื้นที่เท่ากัน ไม่บังคับขั้นต่ำจนดันล้น */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
   align-items: stretch;
 }
@@ -168,18 +190,45 @@
   font-weight: 600;
   letter-spacing: 0.01em;
   cursor: pointer;
-  transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.08s ease;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    box-shadow 0.12s ease,
+    transform 0.08s ease;
   text-align: center;
 }
 
 .admin-row-actions .pill-btn .glyph { font-size: 14px; }
 .admin-row-actions .pill-btn .label { line-height: 1.2; }
 
-.admin-row-actions .pill-btn:hover { background: #eef2ff; border-color: #c7d2fe; box-shadow: 0 1px 0 rgba(99, 102, 241, 0.18); }
-.admin-row-actions .pill-btn:active { transform: translateY(1px); }
-.admin-row-actions .pill-btn.ghost { background: #f8fafc; border-color: #e2e8f0; color: #0f172a; }
-.admin-row-actions .pill-btn.success { background: #ecfdf3; border-color: #bbf7d0; color: #15803d; }
-.admin-row-actions .pill-btn.danger { background: #fff1f2; border-color: #fecdd3; color: #b91c1c; }
+.admin-row-actions .pill-btn:hover {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  box-shadow: 0 1px 0 rgba(99, 102, 241, 0.18);
+}
+
+.admin-row-actions .pill-btn:active {
+  transform: translateY(1px);
+}
+
+.admin-row-actions .pill-btn.ghost {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #0f172a;
+}
+
+.admin-row-actions .pill-btn.success {
+  background: #ecfdf3;
+  border-color: #bbf7d0;
+  color: #15803d;
+}
+
+.admin-row-actions .pill-btn.danger {
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #b91c1c;
+}
+
 .admin-row-actions .pill-btn input[type='file'] {
   position: absolute;
   inset: 0;
@@ -194,10 +243,12 @@
   text-align: center;
 }
 
-/* textarea ให้ไม่กินพื้นที่เกิน */
-.admin-table textarea.input {
-  min-height: 72px;
-  resize: vertical;
+/* ย่อปุ่มลงอีกนิดในจอไม่กว้างมาก เพื่อกันล้น */
+@media (max-width: 1280px) {
+  .admin-row-actions .pill-btn {
+    padding: 5px 8px;
+    font-size: 11.5px;
+  }
 }
 
 /* ================== มือถือ / จอเล็ก ================== */
@@ -239,26 +290,22 @@
     display: block;
     font-size: 11px;
     font-weight: 600;
-    text-transform: none;
     color: #9ca3af;
     margin-bottom: 2px;
   }
-
-  /* ----- กล่องรูปให้เหมือน preview-frame ด้านบน ----- */
 
   /* ไม่ต้องโชว์คำว่า "รูป" ซ้ำ */
   .admin-table tbody td.image-cell::before {
     display: none;
   }
 
-  /* ทำกรอบรูปให้เต็มการ์ด เหมือนกล่อง preview ด้านบน */
   .admin-table tbody td.image-cell {
     padding: 0 0 10px;
   }
 
   .admin-table .image-cell .preview-frame {
     width: 100%;
-    height: 180px;          /* สูงใกล้กล่องบน ถ้าอยากเตี้ย/สูง ปรับเลขนี้ได้เลย */
+    height: 180px;
     padding: 8px 12px;
     border-radius: 16px;
   }
@@ -274,7 +321,7 @@
     font-size: 13px;
   }
 
-  /* คอลัมน์จัดการ – ขีดคั่นด้านบน + ปุ่มเรียงลงมา */
+  /* เส้นปะคั่นส่วนปุ่มจัดการบนมือถือ */
   .admin-table tbody td.tr-actions {
     margin-top: 6px;
     padding-top: 8px;
@@ -286,5 +333,7 @@
     align-items: stretch;
   }
 
-  .admin-row-actions .action-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+  .admin-row-actions .action-grid {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
 }

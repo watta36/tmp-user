@@ -10,6 +10,7 @@
 .nav__links{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .nav__link{padding:10px 12px;border-radius:12px;font-weight:700;color:#0f172a;text-decoration:none;border:1px solid transparent}
 .nav__link:hover{background:#f8fafc;border-color:#e2e8f0}
+.nav__button{background:none;border:none;font:inherit;cursor:pointer}
 .nav__cta{box-shadow:0 12px 32px -20px rgba(14,165,233,.8)}
 .btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border:1px solid var(--primary);color:var(--primary);border-radius:12px;background:#fff;font-weight:600;cursor:pointer;transition:transform .15s ease,box-shadow .15s ease}
 .btn.primary{background:var(--primary);color:#fff}

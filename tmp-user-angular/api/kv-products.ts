@@ -28,6 +28,30 @@ const VERSION_KEY = 'products_version';
 const LOCAL_FILE = path.join(process.cwd(), 'api', 'local-kv.json');
 
 const hasKvEnv = () => ['KV_REST_API_URL', 'KV_REST_API_TOKEN'].every((key) => !!process.env[key]);
+const hasEdgeConfigEnv = () => ['EDGE_CONFIG_ID', 'EDGE_CONFIG_TOKEN'].every((key) => !!process.env[key]);
+
+type EdgeConfigResponse<T> = { items?: Record<string, T>; item?: { key: string; value: T } };
+
+async function edgeConfigGet<T>(key: string): Promise<T | null> {
+  if (!hasEdgeConfigEnv()) return null;
+  const { EDGE_CONFIG_ID, EDGE_CONFIG_TOKEN } = process.env;
+  const res = await fetch(`https://edge-config.vercel.com/${EDGE_CONFIG_ID}/item/${key}?token=${EDGE_CONFIG_TOKEN}`);
+  if (!res.ok) return null;
+  const data = (await res.json()) as EdgeConfigResponse<T>;
+  return data.item?.value ?? null;
+}
+
+async function edgeConfigSet(items: Record<string, unknown>): Promise<void> {
+  if (!hasEdgeConfigEnv()) return;
+  const { EDGE_CONFIG_ID, EDGE_CONFIG_TOKEN } = process.env;
+  await fetch(`https://edge-config.vercel.com/${EDGE_CONFIG_ID}/items?token=${EDGE_CONFIG_TOKEN}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      items: Object.entries(items).map(([key, value]) => ({ operation: 'upsert', key, value })),
+    }),
+  });
+}
 
 async function getVersion(): Promise<number> {
   const version = await kv.get<number>(VERSION_KEY);
@@ -70,14 +94,35 @@ function parseBody(body: unknown): Partial<KvPayload> {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    const useKv = hasKvEnv();
+    const useEdgeConfig = hasEdgeConfigEnv();
+    const useKv = !useEdgeConfig && hasKvEnv();
 
     if (req.method === 'GET' && req.query.versionOnly) {
-      const version = useKv ? await getVersion() : (await readLocalState()).version;
+      let version = 0;
+      if (useEdgeConfig) {
+        version = (await edgeConfigGet<number>(VERSION_KEY)) ?? 0;
+      } else if (useKv) {
+        version = await getVersion();
+      } else {
+        version = (await readLocalState()).version;
+      }
       return res.status(200).json({ version });
     }
 
     if (req.method === 'GET') {
+      if (useEdgeConfig) {
+        const [products, categories, version] = await Promise.all([
+          edgeConfigGet<KvProduct[]>(PRODUCTS_KEY),
+          edgeConfigGet<string[]>(CATEGORIES_KEY),
+          edgeConfigGet<number>(VERSION_KEY),
+        ]);
+        return res.status(200).json({
+          products: products ?? [],
+          categories: categories ?? [],
+          version: version ?? 0,
+        });
+      }
+
       if (useKv) {
         const [products, categories, version] = await Promise.all([
           kv.get<KvProduct[]>(PRODUCTS_KEY),
@@ -102,6 +147,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'POST') {
       const payload = parseBody(req.body);
       if (payload.action === 'apply') {
+        if (useEdgeConfig) {
+          const current = (await edgeConfigGet<number>(VERSION_KEY)) ?? 0;
+          const next = current + 1;
+          await edgeConfigSet({ [VERSION_KEY]: next });
+          return res.status(200).json({ ok: true, version: next });
+        }
+
         if (useKv) {
           const version = await bumpVersion();
           return res.status(200).json({ ok: true, version });
@@ -115,6 +167,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const products = Array.isArray(payload.products) ? payload.products : [];
       const categories = Array.isArray(payload.categories) ? payload.categories : [];
+
+      if (useEdgeConfig) {
+        const currentVersion = (await edgeConfigGet<number>(VERSION_KEY)) ?? 0;
+        const nextVersion = currentVersion + 1;
+        await edgeConfigSet({
+          [PRODUCTS_KEY]: products,
+          [CATEGORIES_KEY]: categories,
+          [VERSION_KEY]: nextVersion,
+        });
+        return res
+          .status(200)
+          .json({ ok: true, products: products.length, categories: categories.length, version: nextVersion });
+      }
 
       if (useKv) {
         await Promise.all([

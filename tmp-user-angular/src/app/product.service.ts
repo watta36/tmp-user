@@ -1,4 +1,6 @@
 import { Injectable, OnDestroy, signal } from '@angular/core';
+import { Subscription } from 'rxjs';
+import { KvStoreService } from './kv-store.service';
 
 export type Product = {
   id: number;
@@ -144,9 +146,12 @@ export class ProductService implements OnDestroy {
   products = signal<Product[]>(this.load());
   private categoryOptions = signal<string[]>(this.loadCategories());
   private storageHandler?: (ev: StorageEvent) => void;
+  private syncSub?: Subscription;
+  private syncTimer?: ReturnType<typeof setTimeout>;
 
-  constructor() {
+  constructor(private kvStore: KvStoreService) {
     this.listenToStorageChanges();
+    this.loadFromKv();
   }
 
   private load(): Product[] {
@@ -160,6 +165,7 @@ export class ProductService implements OnDestroy {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.products()));
     } catch {}
+    this.scheduleSync();
   }
 
   list() { return this.products(); }
@@ -269,6 +275,7 @@ export class ProductService implements OnDestroy {
     try {
       localStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(this.categoryOptions()));
     } catch {}
+    this.scheduleSync();
   }
 
   private escapeCsv(v: unknown) {
@@ -378,10 +385,42 @@ export class ProductService implements OnDestroy {
     this.saveCategories();
   }
 
+  private loadFromKv() {
+    this.syncSub = this.kvStore.loadState().subscribe({
+      next: (state) => {
+        if (!state.products?.length) return;
+        const normalizedProducts = this.normalizeList(state.products);
+        this.products.set(normalizedProducts);
+
+        const cats = state.categories?.length
+          ? this.normalizeCategories(state.categories)
+          : this.normalizeCategories(normalizedProducts.map((p) => p.category));
+        this.categoryOptions.set(cats);
+
+        this.save();
+        this.saveCategories();
+      },
+      error: (err) => console.warn('โหลดข้อมูลจาก KV ไม่สำเร็จ', err)
+    });
+  }
+
+  private scheduleSync() {
+    if (typeof window === 'undefined') return;
+    if (this.syncTimer) clearTimeout(this.syncTimer);
+    this.syncTimer = setTimeout(() => {
+      this.syncTimer = undefined;
+      this.kvStore.saveState(this.products(), this.categoryOptions()).subscribe({
+        error: (err) => console.error('ซิงค์ข้อมูลไป KV ไม่สำเร็จ', err)
+      });
+    }, 300);
+  }
+
   ngOnDestroy(): void {
     if (this.storageHandler && typeof window !== 'undefined') {
       window.removeEventListener('storage', this.storageHandler);
     }
+    this.syncSub?.unsubscribe();
+    if (this.syncTimer) clearTimeout(this.syncTimer);
   }
 
   private listenToStorageChanges() {

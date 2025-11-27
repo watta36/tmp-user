@@ -1,4 +1,5 @@
 import { bootstrapApplication } from '@angular/platform-browser';
+import { provideHttpClient } from '@angular/common/http';
 import { provideRouter, Routes, withInMemoryScrolling } from '@angular/router';
 import { AppComponent } from './app/app.component';
 import { ShopComponent } from './app/shop.component';
@@ -16,6 +17,7 @@ const routes: Routes = [
 
 bootstrapApplication(AppComponent, {
   providers: [
-    provideRouter(routes, withInMemoryScrolling({ anchorScrolling: 'enabled' }))
+    provideRouter(routes, withInMemoryScrolling({ anchorScrolling: 'enabled' })),
+    provideHttpClient()
   ]
 }).catch(err => console.error(err));

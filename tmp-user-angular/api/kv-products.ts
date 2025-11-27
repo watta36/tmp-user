@@ -146,27 +146,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method === 'POST') {
       const payload = parseBody(req.body);
+      const bodyProducts = Array.isArray(payload.products) ? payload.products : undefined;
+      const bodyCategories = Array.isArray(payload.categories) ? payload.categories : undefined;
+
       if (payload.action === 'apply') {
         if (useEdgeConfig) {
           const current = (await edgeConfigGet<number>(VERSION_KEY)) ?? 0;
           const next = current + 1;
-          await edgeConfigSet({ [VERSION_KEY]: next });
+          const items: Record<string, unknown> = { [VERSION_KEY]: next };
+          if (bodyProducts) items[PRODUCTS_KEY] = bodyProducts;
+          if (bodyCategories) items[CATEGORIES_KEY] = bodyCategories;
+          await edgeConfigSet(items);
           return res.status(200).json({ ok: true, version: next });
         }
 
         if (useKv) {
+          if (bodyProducts) await kv.set(PRODUCTS_KEY, bodyProducts);
+          if (bodyCategories) await kv.set(CATEGORIES_KEY, bodyCategories);
           const version = await bumpVersion();
           return res.status(200).json({ ok: true, version });
         }
 
-        const state = await readLocalState();
-        const nextVersion = state.version + 1;
-        await writeLocalState({ ...state, version: nextVersion });
+        const current = await readLocalState();
+        const products = bodyProducts ?? current.products;
+        const categories = bodyCategories ?? current.categories;
+        const nextVersion = current.version + 1;
+        await writeLocalState({ products, categories, version: nextVersion });
         return res.status(200).json({ ok: true, version: nextVersion });
       }
 
-      const products = Array.isArray(payload.products) ? payload.products : [];
-      const categories = Array.isArray(payload.categories) ? payload.categories : [];
+      const products = bodyProducts ?? [];
+      const categories = bodyCategories ?? [];
+
+      if (useEdgeConfig) {
+        const currentVersion = (await edgeConfigGet<number>(VERSION_KEY)) ?? 0;
+        const nextVersion = currentVersion + 1;
+        await edgeConfigSet({
+          [PRODUCTS_KEY]: products,
+          [CATEGORIES_KEY]: categories,
+          [VERSION_KEY]: nextVersion,
+        });
+        return res
+          .status(200)
+          .json({ ok: true, products: products.length, categories: categories.length, version: nextVersion });
+      }
 
       if (useEdgeConfig) {
         const currentVersion = (await edgeConfigGet<number>(VERSION_KEY)) ?? 0;

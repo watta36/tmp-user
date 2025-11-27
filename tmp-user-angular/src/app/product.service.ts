@@ -1,6 +1,6 @@
 import { Injectable, OnDestroy, signal } from '@angular/core';
-import { Subscription } from 'rxjs';
-import { KvStoreService } from './kv-store.service';
+import { firstValueFrom } from 'rxjs';
+import { KvStoreService, KvState } from './kv-store.service';
 
 export type Product = {
   id: number;
@@ -14,9 +14,6 @@ export type Product = {
   image?: string;
   images?: string[];
 };
-
-const STORAGE_KEY = 'tmp_products_v2';
-const CATEGORY_STORAGE_KEY = 'tmp_categories_v1';
 
 function placeholder(name: string, emoji = '🦐', bg = '#e0f2fe'): string {
   const safe = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -143,39 +140,27 @@ const SEED: Product[] = [
 
 @Injectable({ providedIn: 'root' })
 export class ProductService implements OnDestroy {
-  products = signal<Product[]>(this.load());
-  private categoryOptions = signal<string[]>(this.loadCategories());
-  private storageHandler?: (ev: StorageEvent) => void;
-  private syncSub?: Subscription;
-  private syncTimer?: ReturnType<typeof setTimeout>;
+  products = signal<Product[]>([]);
+  private categoryOptions = signal<string[]>([]);
+  private serverVersion = signal<number>(0);
+  private lastSnapshot: KvState | null = null;
+  private versionPoller?: ReturnType<typeof setInterval>;
 
   constructor(private kvStore: KvStoreService) {
-    this.listenToStorageChanges();
-    this.loadFromKv();
-  }
-
-  private load(): Product[] {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) return this.normalizeList(JSON.parse(raw));
-    } catch {}
-    return this.normalizeList(SEED);
-  }
-  private save() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.products()));
-    } catch {}
-    this.scheduleSync();
+    this.refreshFromServer();
+    this.startVersionPolling();
   }
 
   list() { return this.products(); }
   categories(): string[] { return this.categoryOptions(); }
-  addCategory(name: string) {
+
+  async addCategory(name: string) {
     const normalized = this.normalizeCategories([name, ...this.categoryOptions()]);
     this.categoryOptions.set(normalized);
-    this.saveCategories();
+    await this.persistState();
   }
-  renameCategory(prevName: string, nextName: string) {
+
+  async renameCategory(prevName: string, nextName: string) {
     const newName = nextName.trim();
     if (!newName) return;
     const updatedList = this.normalizeCategories(this.categoryOptions().map((c) => (c === prevName ? newName : c)));
@@ -183,46 +168,45 @@ export class ProductService implements OnDestroy {
     this.products.set(
       this.products().map((p) => (p.category === prevName ? this.normalizeProduct({ ...p, category: newName }) : p))
     );
-    this.save();
-    this.saveCategories();
+    await this.persistState();
   }
-  removeCategory(name: string) {
+
+  async removeCategory(name: string) {
     this.categoryOptions.set(this.categoryOptions().filter((c) => c !== name));
-    this.saveCategories();
     this.products.set(this.products().map((p) => (p.category === name ? this.normalizeProduct({ ...p, category: '' }) : p)));
-    this.save();
+    await this.persistState();
   }
-  add(p: Omit<Product, 'id'>) {
+
+  async add(p: Omit<Product, 'id'>) {
     const nextId = Math.max(0, ...this.products().map(x => x.id)) + 1;
     const product = this.normalizeProduct({ id: nextId, ...p } as Product);
     this.products.set([product, ...this.products()]);
     this.ensureCategoryExists(product.category);
-    this.save();
+    await this.persistState();
   }
-  update(id: number, patch: Partial<Product>) {
+
+  async update(id: number, patch: Partial<Product>) {
     this.products.set(this.products().map(p => p.id === id ? this.normalizeProduct({ ...p, ...patch, id: p.id }) : p));
     if (patch.category) this.ensureCategoryExists(patch.category);
-    this.save();
+    await this.persistState();
   }
-  remove(id: number) {
+
+  async remove(id: number) {
     this.products.set(this.products().filter(p => p.id !== id));
-    this.save();
+    await this.persistState();
   }
-  reloadFromStorage() {
-    this.products.set(this.load());
-    this.categoryOptions.set(this.loadCategories());
+
+  async resetToSeed() {
+    const normalized = this.normalizeList(SEED);
+    this.products.set(normalized);
+    this.categoryOptions.set(this.normalizeCategories(normalized.map((p) => p.category)));
+    await this.persistState();
   }
-  resetToSeed() {
-    this.products.set(this.normalizeList(SEED));
-    this.categoryOptions.set(this.normalizeCategories(SEED.map((p) => p.category)));
-    this.saveCategories();
-    this.save();
-  }
-  clearAll() {
+
+  async clearAll() {
     this.products.set([]);
     this.categoryOptions.set([]);
-    this.saveCategories();
-    this.save();
+    await this.persistState();
   }
 
   exportToCsv(filename = 'products.csv') {
@@ -258,24 +242,102 @@ export class ProductService implements OnDestroy {
     const deduped = this.dedupById(products);
     this.products.set(deduped);
     this.categoryOptions.set(this.normalizeCategories(deduped.map((p) => p.category)));
-    this.saveCategories();
-    this.save();
+    await this.persistState();
     return { imported: deduped.length, skipped };
   }
 
-  private loadCategories(): string[] {
+  async refreshFromServer() {
     try {
-      const raw = localStorage.getItem(CATEGORY_STORAGE_KEY);
-      if (raw) return this.normalizeCategories(JSON.parse(raw));
-    } catch {}
-    return this.normalizeCategories(this.products().map((p) => p.category));
+      const state = await firstValueFrom(this.kvStore.loadState());
+      if (!state.products?.length) {
+        this.applyStateFromServer({
+          products: this.normalizeList(SEED),
+          categories: this.normalizeCategories(SEED.map((p) => p.category)),
+          version: state.version ?? 0,
+        });
+        return;
+      }
+      this.applyStateFromServer(state);
+    } catch (err) {
+      console.warn('โหลดข้อมูลจากฐานไม่สำเร็จ', err);
+      if (!this.products().length) {
+        this.applyStateFromServer({
+          products: this.normalizeList(SEED),
+          categories: this.normalizeCategories(SEED.map((p) => p.category)),
+          version: 0,
+        });
+      }
+    }
   }
 
-  private saveCategories() {
+  async restoreLastSnapshot() {
+    if (this.lastSnapshot) {
+      this.applyStateFromServer(this.lastSnapshot);
+      return;
+    }
+    await this.refreshFromServer();
+  }
+
+  async applyLatest() {
+    await this.persistState();
     try {
-      localStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(this.categoryOptions()));
-    } catch {}
-    this.scheduleSync();
+      const res = await firstValueFrom(this.kvStore.applyChanges());
+      if (res?.version !== undefined) this.serverVersion.set(res.version);
+    } catch (err) {
+      console.error('บังคับรีเฟรชไม่สำเร็จ', err);
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (this.versionPoller) clearInterval(this.versionPoller);
+  }
+
+  private applyStateFromServer(state: KvState) {
+    const normalizedProducts = this.normalizeList(state.products || []);
+    this.products.set(normalizedProducts);
+
+    const cats = state.categories?.length
+      ? this.normalizeCategories(state.categories)
+      : this.normalizeCategories(normalizedProducts.map((p) => p.category));
+    this.categoryOptions.set(cats);
+
+    const version = state.version ?? this.serverVersion();
+    this.serverVersion.set(version);
+    this.lastSnapshot = {
+      products: [...this.products()],
+      categories: [...this.categoryOptions()],
+      version,
+    };
+  }
+
+  private async persistState() {
+    try {
+      const res = await firstValueFrom(this.kvStore.saveState(this.products(), this.categoryOptions()));
+      const version = res?.version ?? this.serverVersion() + 1;
+      this.serverVersion.set(version);
+      this.lastSnapshot = {
+        products: [...this.products()],
+        categories: [...this.categoryOptions()],
+        version,
+      };
+    } catch (err) {
+      console.error('ซิงค์ข้อมูลไป KV ไม่สำเร็จ', err);
+    }
+  }
+
+  private startVersionPolling() {
+    if (typeof window === 'undefined') return;
+    this.versionPoller = setInterval(async () => {
+      try {
+        const res = await firstValueFrom(this.kvStore.loadVersion());
+        const version = res?.version ?? 0;
+        if (version > this.serverVersion()) {
+          await this.refreshFromServer();
+        }
+      } catch (err) {
+        console.warn('เช็คเวอร์ชันข้อมูลไม่สำเร็จ', err);
+      }
+    }, 10000);
   }
 
   private escapeCsv(v: unknown) {
@@ -382,53 +444,5 @@ export class ProductService implements OnDestroy {
     const next = name.trim();
     if (!next || this.categoryOptions().includes(next)) return;
     this.categoryOptions.set(this.normalizeCategories([...this.categoryOptions(), next]));
-    this.saveCategories();
-  }
-
-  private loadFromKv() {
-    this.syncSub = this.kvStore.loadState().subscribe({
-      next: (state) => {
-        if (!state.products?.length) return;
-        const normalizedProducts = this.normalizeList(state.products);
-        this.products.set(normalizedProducts);
-
-        const cats = state.categories?.length
-          ? this.normalizeCategories(state.categories)
-          : this.normalizeCategories(normalizedProducts.map((p) => p.category));
-        this.categoryOptions.set(cats);
-
-        this.save();
-        this.saveCategories();
-      },
-      error: (err) => console.warn('โหลดข้อมูลจาก KV ไม่สำเร็จ', err)
-    });
-  }
-
-  private scheduleSync() {
-    if (typeof window === 'undefined') return;
-    if (this.syncTimer) clearTimeout(this.syncTimer);
-    this.syncTimer = setTimeout(() => {
-      this.syncTimer = undefined;
-      this.kvStore.saveState(this.products(), this.categoryOptions()).subscribe({
-        error: (err) => console.error('ซิงค์ข้อมูลไป KV ไม่สำเร็จ', err)
-      });
-    }, 300);
-  }
-
-  ngOnDestroy(): void {
-    if (this.storageHandler && typeof window !== 'undefined') {
-      window.removeEventListener('storage', this.storageHandler);
-    }
-    this.syncSub?.unsubscribe();
-    if (this.syncTimer) clearTimeout(this.syncTimer);
-  }
-
-  private listenToStorageChanges() {
-    if (typeof window === 'undefined' || !window.addEventListener) return;
-    this.storageHandler = (ev: StorageEvent) => {
-      if (ev.key && ev.key !== STORAGE_KEY && ev.key !== CATEGORY_STORAGE_KEY) return;
-      this.reloadFromStorage();
-    };
-    window.addEventListener('storage', this.storageHandler);
   }
 }

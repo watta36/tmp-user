@@ -6,6 +6,7 @@ import type { Product } from './product.service';
 export type KvState = {
   products: Product[];
   categories: string[];
+  version?: number;
 };
 
 @Injectable({ providedIn: 'root' })
@@ -17,7 +18,15 @@ export class KvStoreService {
     return this.http.get<KvState>(`${this.baseUrl}/api/kv-products`);
   }
 
-  saveState(products: Product[], categories: string[]): Observable<{ ok: boolean }> {
-    return this.http.post<{ ok: boolean }>(`${this.baseUrl}/api/kv-products`, { products, categories });
+  loadVersion(): Observable<{ version: number }> {
+    return this.http.get<{ version: number }>(`${this.baseUrl}/api/kv-products`, { params: { versionOnly: true } });
+  }
+
+  saveState(products: Product[], categories: string[]): Observable<{ ok: boolean; version?: number }> {
+    return this.http.post<{ ok: boolean; version?: number }>(`${this.baseUrl}/api/kv-products`, { products, categories });
+  }
+
+  applyChanges(): Observable<{ ok: boolean; version?: number }> {
+    return this.http.post<{ ok: boolean; version?: number }>(`${this.baseUrl}/api/kv-products`, { action: 'apply' });
   }
 }

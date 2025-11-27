@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import type { Product } from './product.service';
+import { APP_CONFIG } from './config';
 
 export type KvState = {
   products: Product[];
@@ -12,7 +13,7 @@ export type KvState = {
 @Injectable({ providedIn: 'root' })
 export class KvStoreService {
   private http = inject(HttpClient);
-  private baseUrl = '';
+  private baseUrl = (APP_CONFIG.apiBaseUrl || '').replace(/\/$/, '');
 
   loadState(): Observable<KvState> {
     return this.http.get<KvState>(`${this.baseUrl}/api/kv-products`);

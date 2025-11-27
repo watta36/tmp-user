@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { kv } from '@vercel/kv';
 
 function ensureKvEnv(res: VercelResponse): boolean {
-  const required = ['KV_REST_API_URL', 'KV_REST_API_TOKEN', 'KV_URL'];
+  const required = ['KV_REST_API_URL', 'KV_REST_API_TOKEN'];
   const missing = required.filter((key) => !process.env[key]);
   if (missing.length) {
     res.status(500).json({ error: 'KV configuration missing', missing });

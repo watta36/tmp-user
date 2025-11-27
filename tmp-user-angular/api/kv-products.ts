@@ -27,7 +27,7 @@ const CATEGORIES_KEY = 'categories';
 const VERSION_KEY = 'products_version';
 const LOCAL_FILE = path.join(process.cwd(), 'api', 'local-kv.json');
 
-const hasKvEnv = () => ['KV_REST_API_URL', 'KV_REST_API_TOKEN', 'KV_URL'].every((key) => !!process.env[key]);
+const hasKvEnv = () => ['KV_REST_API_URL', 'KV_REST_API_TOKEN'].every((key) => !!process.env[key]);
 
 async function getVersion(): Promise<number> {
   const version = await kv.get<number>(VERSION_KEY);

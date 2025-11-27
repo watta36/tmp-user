@@ -1,31 +1,100 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { kv } from '@vercel/kv';
+import type { VercelRequest, VercelResponse } from './vercel-types';
+import { hasKvEnv, kvGet, kvIncr, kvSet } from './kv-client';
 
-function ensureKvEnv(res: VercelResponse): boolean {
-  const required = ['KV_REST_API_URL', 'KV_REST_API_TOKEN'];
-  const missing = required.filter((key) => !process.env[key]);
-  if (missing.length) {
-    res.status(500).json({ error: 'KV configuration missing', missing });
-    return false;
+const hasEdgeConfigEnv = () => ['EDGE_CONFIG_ID', 'EDGE_CONFIG_TOKEN'].every((key) => !!process.env[key]);
+
+const TEST_KEY = 'kv_test_counter';
+let localCounter = 0;
+
+async function edgeConfigGet<T>(key: string): Promise<T | null> {
+  if (!hasEdgeConfigEnv()) return null;
+  try {
+    const { EDGE_CONFIG_ID, EDGE_CONFIG_TOKEN } = process.env;
+    const res = await fetch(`https://edge-config.vercel.com/${EDGE_CONFIG_ID}/item/${key}?token=${EDGE_CONFIG_TOKEN}`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as { item?: { key: string; value: T } };
+    return data.item?.value ?? null;
+  } catch (err) {
+    console.error('Edge Config read failed', err);
+    return null;
   }
-  return true;
+}
+
+async function edgeConfigSet(key: string, value: unknown): Promise<void> {
+  if (!hasEdgeConfigEnv()) return;
+  try {
+    const { EDGE_CONFIG_ID, EDGE_CONFIG_TOKEN } = process.env;
+    await fetch(`https://edge-config.vercel.com/${EDGE_CONFIG_ID}/items?token=${EDGE_CONFIG_TOKEN}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ items: [{ operation: 'upsert', key, value }] }),
+    });
+  } catch (err) {
+    console.error('Edge Config write failed', err);
+  }
+}
+
+function parseBody(body: unknown): Record<string, unknown> {
+  if (typeof body === 'string') {
+    try { return JSON.parse(body); } catch { return {}; }
+  }
+  return typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    if (!ensureKvEnv(res)) return;
+    const useEdgeConfig = hasEdgeConfigEnv();
+    const useKv = !useEdgeConfig && hasKvEnv();
 
     if (req.method === 'GET') {
-      const value = (await kv.get<number>('counter')) ?? 0;
-      return res.status(200).json({ counter: value });
+      if (useEdgeConfig) {
+        const counter = (await edgeConfigGet<number>(TEST_KEY)) ?? 0;
+        return res.status(200).json({ ok: true, backend: 'edge-config', counter });
+      }
+
+      if (useKv) {
+        const counter = (await kvGet<number>(TEST_KEY)) ?? 0;
+        return res.status(200).json({ ok: true, backend: 'vercel-kv', counter });
+      }
+
+      return res.status(200).json({
+        ok: true,
+        backend: 'local-fallback',
+        counter: localCounter,
+        message: 'Set EDGE_CONFIG_ID/TOKEN or KV_REST_API_URL/TOKEN to test remote storage.',
+      });
     }
 
     if (req.method === 'POST') {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-      const next = body?.value ?? 0;
+      const body = parseBody(req.body);
+      const requested = body.value;
 
-      await kv.set('counter', next);
-      return res.status(200).json({ ok: true, counter: next });
+      if (useEdgeConfig) {
+        const current = (await edgeConfigGet<number>(TEST_KEY)) ?? 0;
+        const next = typeof requested === 'number' ? requested : current + 1;
+        await edgeConfigSet(TEST_KEY, next);
+        return res.status(200).json({ ok: true, backend: 'edge-config', counter: next });
+      }
+
+      if (useKv) {
+        const current = (await kvGet<number>(TEST_KEY)) ?? 0;
+        const next = typeof requested === 'number' ? requested : current + 1;
+        if (typeof requested === 'number') {
+          await kvSet(TEST_KEY, next);
+        } else {
+          await kvIncr(TEST_KEY);
+        }
+        return res.status(200).json({ ok: true, backend: 'vercel-kv', counter: next });
+      }
+
+      const next = typeof requested === 'number' ? requested : localCounter + 1;
+      localCounter = next;
+      return res.status(200).json({
+        ok: true,
+        backend: 'local-fallback',
+        counter: next,
+        message: 'Remote KV/Edge Config env vars missing; stored only in-memory for this test call.',
+      });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });

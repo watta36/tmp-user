@@ -1,7 +1,7 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { kv } from '@vercel/kv';
+import type { VercelRequest, VercelResponse } from './vercel-types';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { hasKvEnv, kvGet, kvIncr, kvSet } from './kv-client';
 
 export type KvProduct = {
   id: number;
@@ -30,40 +30,48 @@ const VERSION_KEY = 'products_version';
 // local fallback works even without KV/Edge Config env vars.
 const LOCAL_FILE = path.join(process.env.TMPDIR ?? '/tmp', 'local-kv.json');
 
-const hasKvEnv = () => ['KV_REST_API_URL', 'KV_REST_API_TOKEN'].every((key) => !!process.env[key]);
 const hasEdgeConfigEnv = () => ['EDGE_CONFIG_ID', 'EDGE_CONFIG_TOKEN'].every((key) => !!process.env[key]);
 
 type EdgeConfigResponse<T> = { items?: Record<string, T>; item?: { key: string; value: T } };
 
 async function edgeConfigGet<T>(key: string): Promise<T | null> {
   if (!hasEdgeConfigEnv()) return null;
-  const { EDGE_CONFIG_ID, EDGE_CONFIG_TOKEN } = process.env;
-  const res = await fetch(`https://edge-config.vercel.com/${EDGE_CONFIG_ID}/item/${key}?token=${EDGE_CONFIG_TOKEN}`);
-  if (!res.ok) return null;
-  const data = (await res.json()) as EdgeConfigResponse<T>;
-  return data.item?.value ?? null;
+  try {
+    const { EDGE_CONFIG_ID, EDGE_CONFIG_TOKEN } = process.env;
+    const res = await fetch(`https://edge-config.vercel.com/${EDGE_CONFIG_ID}/item/${key}?token=${EDGE_CONFIG_TOKEN}`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as EdgeConfigResponse<T>;
+    return data.item?.value ?? null;
+  } catch (err) {
+    console.error('Edge Config read failed', err);
+    return null;
+  }
 }
 
 async function edgeConfigSet(items: Record<string, unknown>): Promise<void> {
   if (!hasEdgeConfigEnv()) return;
-  const { EDGE_CONFIG_ID, EDGE_CONFIG_TOKEN } = process.env;
-  await fetch(`https://edge-config.vercel.com/${EDGE_CONFIG_ID}/items?token=${EDGE_CONFIG_TOKEN}`, {
-    method: 'PATCH',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      items: Object.entries(items).map(([key, value]) => ({ operation: 'upsert', key, value })),
-    }),
-  });
+  try {
+    const { EDGE_CONFIG_ID, EDGE_CONFIG_TOKEN } = process.env;
+    await fetch(`https://edge-config.vercel.com/${EDGE_CONFIG_ID}/items?token=${EDGE_CONFIG_TOKEN}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        items: Object.entries(items).map(([key, value]) => ({ operation: 'upsert', key, value })),
+      }),
+    });
+  } catch (err) {
+    console.error('Edge Config write failed', err);
+  }
 }
 
 async function getVersion(): Promise<number> {
-  const version = await kv.get<number>(VERSION_KEY);
+  const version = await kvGet<number>(VERSION_KEY);
   return typeof version === 'number' ? version : 0;
 }
 
 async function bumpVersion(): Promise<number> {
   const current = await getVersion();
-  const next = await kv.incr(VERSION_KEY);
+  const next = await kvIncr(VERSION_KEY);
   return typeof next === 'number' ? next : current + 1;
 }
 
@@ -142,8 +150,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (useKv) {
         const [products, categories, version] = await Promise.all([
-          kv.get<KvProduct[]>(PRODUCTS_KEY),
-          kv.get<string[]>(CATEGORIES_KEY),
+          kvGet<KvProduct[]>(PRODUCTS_KEY),
+          kvGet<string[]>(CATEGORIES_KEY),
           getVersion(),
         ]);
         return res.status(200).json({
@@ -178,8 +186,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         if (useKv) {
-          if (bodyProducts) await kv.set(PRODUCTS_KEY, bodyProducts);
-          if (bodyCategories) await kv.set(CATEGORIES_KEY, bodyCategories);
+          if (bodyProducts) await kvSet(PRODUCTS_KEY, bodyProducts);
+          if (bodyCategories) await kvSet(CATEGORIES_KEY, bodyCategories);
           const version = await bumpVersion();
           return res.status(200).json({ ok: true, version });
         }
@@ -210,8 +218,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (useKv) {
         await Promise.all([
-          kv.set(PRODUCTS_KEY, products),
-          kv.set(CATEGORIES_KEY, categories),
+          kvSet(PRODUCTS_KEY, products),
+          kvSet(CATEGORIES_KEY, categories),
         ]);
         const version = await bumpVersion();
         return res.status(200).json({ ok: true, products: products.length, categories: categories.length, version });

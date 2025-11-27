@@ -279,7 +279,7 @@ export class ProductService implements OnDestroy {
   }
 
   async applyLatest() {
-    await this.persistState();
+    await this.persistState(true);
     try {
       const res = await firstValueFrom(this.kvStore.applyChanges());
       if (res?.version !== undefined) this.serverVersion.set(res.version);
@@ -310,7 +310,7 @@ export class ProductService implements OnDestroy {
     };
   }
 
-  private async persistState() {
+  private async persistState(throwOnError = false) {
     try {
       const res = await firstValueFrom(this.kvStore.saveState(this.products(), this.categoryOptions()));
       const version = res?.version ?? this.serverVersion() + 1;
@@ -320,8 +320,11 @@ export class ProductService implements OnDestroy {
         categories: [...this.categoryOptions()],
         version,
       };
+      return true;
     } catch (err) {
       console.error('ซิงค์ข้อมูลไป KV ไม่สำเร็จ', err);
+      if (throwOnError) throw err;
+      return false;
     }
   }
 

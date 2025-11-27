@@ -29,6 +29,7 @@ export class AdminComponent {
     images: [],
   };
   importing = signal(false);
+  applying = signal(false);
 
   constructor(public ps: ProductService, public auth: AuthService) {}
 
@@ -84,6 +85,19 @@ export class AdminComponent {
   }
 
   exportCsv() { this.ps.exportToCsv(); }
+
+  async applyChanges() {
+    this.applying.set(true);
+    try {
+      await this.ps.applyLatest();
+      alert('เผยแพร่ข้อมูลให้ลูกค้าเรียบร้อยแล้ว');
+    } catch (err) {
+      console.error(err);
+      alert('เผยแพร่ข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง');
+    } finally {
+      this.applying.set(false);
+    }
+  }
 
   async importCsv(ev: Event) {
     const input = ev.target as HTMLInputElement;
@@ -168,7 +182,7 @@ export class AdminComponent {
   }
 
   cancelEdits() {
-    this.ps.reloadFromStorage();
+    this.ps.restoreLastSnapshot();
   }
 
   remove(id: number) {

@@ -1,5 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { kv } from '@vercel/kv';
+import { promises as fs } from 'fs';
+import path from 'path';
 
 export type KvProduct = {
   id: number;
@@ -23,19 +25,9 @@ type KvPayload = {
 const PRODUCTS_KEY = 'products';
 const CATEGORIES_KEY = 'categories';
 const VERSION_KEY = 'products_version';
+const LOCAL_FILE = path.join(process.cwd(), 'api', 'local-kv.json');
 
-function ensureKvEnv(res: VercelResponse): boolean {
-  const required = ['KV_REST_API_URL', 'KV_REST_API_TOKEN', 'KV_URL'];
-  const missing = required.filter((key) => !process.env[key]);
-  if (missing.length) {
-    res.status(500).json({
-      error: 'KV configuration missing',
-      missing,
-    });
-    return false;
-  }
-  return true;
-}
+const hasKvEnv = () => ['KV_REST_API_URL', 'KV_REST_API_TOKEN', 'KV_URL'].every((key) => !!process.env[key]);
 
 async function getVersion(): Promise<number> {
   const version = await kv.get<number>(VERSION_KEY);
@@ -48,6 +40,26 @@ async function bumpVersion(): Promise<number> {
   return typeof next === 'number' ? next : current + 1;
 }
 
+type LocalState = { products: KvProduct[]; categories: string[]; version: number };
+
+async function readLocalState(): Promise<LocalState> {
+  try {
+    const content = await fs.readFile(LOCAL_FILE, 'utf8');
+    const parsed = JSON.parse(content) as Partial<LocalState>;
+    return {
+      products: Array.isArray(parsed.products) ? parsed.products : [],
+      categories: Array.isArray(parsed.categories) ? parsed.categories : [],
+      version: typeof parsed.version === 'number' ? parsed.version : 0,
+    };
+  } catch {
+    return { products: [], categories: [], version: 0 };
+  }
+}
+
+async function writeLocalState(data: LocalState) {
+  await fs.writeFile(LOCAL_FILE, JSON.stringify(data, null, 2), 'utf8');
+}
+
 function parseBody(body: unknown): Partial<KvPayload> {
   if (typeof body === 'string') {
     try { return JSON.parse(body); } catch { return {}; }
@@ -58,44 +70,65 @@ function parseBody(body: unknown): Partial<KvPayload> {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    if (!ensureKvEnv(res)) return;
+    const useKv = hasKvEnv();
 
     if (req.method === 'GET' && req.query.versionOnly) {
-      const version = await getVersion();
+      const version = useKv ? await getVersion() : (await readLocalState()).version;
       return res.status(200).json({ version });
     }
 
     if (req.method === 'GET') {
-      const [products, categories] = await Promise.all([
-        kv.get<KvProduct[]>(PRODUCTS_KEY),
-        kv.get<string[]>(CATEGORIES_KEY)
-      ]);
-      const version = await getVersion();
+      if (useKv) {
+        const [products, categories, version] = await Promise.all([
+          kv.get<KvProduct[]>(PRODUCTS_KEY),
+          kv.get<string[]>(CATEGORIES_KEY),
+          getVersion(),
+        ]);
+        return res.status(200).json({
+          products: products ?? [],
+          categories: categories ?? [],
+          version,
+        });
+      }
+
+      const state = await readLocalState();
       return res.status(200).json({
-        products: products ?? [],
-        categories: categories ?? [],
-        version,
+        products: state.products,
+        categories: state.categories,
+        version: state.version,
       });
     }
 
     if (req.method === 'POST') {
       const payload = parseBody(req.body);
       if (payload.action === 'apply') {
-        const version = await bumpVersion();
-        return res.status(200).json({ ok: true, version });
+        if (useKv) {
+          const version = await bumpVersion();
+          return res.status(200).json({ ok: true, version });
+        }
+
+        const state = await readLocalState();
+        const nextVersion = state.version + 1;
+        await writeLocalState({ ...state, version: nextVersion });
+        return res.status(200).json({ ok: true, version: nextVersion });
       }
 
       const products = Array.isArray(payload.products) ? payload.products : [];
       const categories = Array.isArray(payload.categories) ? payload.categories : [];
 
-      await Promise.all([
-        kv.set(PRODUCTS_KEY, products),
-        kv.set(CATEGORIES_KEY, categories),
-      ]);
+      if (useKv) {
+        await Promise.all([
+          kv.set(PRODUCTS_KEY, products),
+          kv.set(CATEGORIES_KEY, categories),
+        ]);
+        const version = await bumpVersion();
+        return res.status(200).json({ ok: true, products: products.length, categories: categories.length, version });
+      }
 
-      const version = await bumpVersion();
-
-      return res.status(200).json({ ok: true, products: products.length, categories: categories.length, version });
+      const current = await readLocalState();
+      const nextVersion = current.version + 1;
+      await writeLocalState({ products, categories, version: nextVersion });
+      return res.status(200).json({ ok: true, products: products.length, categories: categories.length, version: nextVersion });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });

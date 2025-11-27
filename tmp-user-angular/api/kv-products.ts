@@ -24,6 +24,19 @@ const PRODUCTS_KEY = 'products';
 const CATEGORIES_KEY = 'categories';
 const VERSION_KEY = 'products_version';
 
+function ensureKvEnv(res: VercelResponse): boolean {
+  const required = ['KV_REST_API_URL', 'KV_REST_API_TOKEN', 'KV_URL'];
+  const missing = required.filter((key) => !process.env[key]);
+  if (missing.length) {
+    res.status(500).json({
+      error: 'KV configuration missing',
+      missing,
+    });
+    return false;
+  }
+  return true;
+}
+
 async function getVersion(): Promise<number> {
   const version = await kv.get<number>(VERSION_KEY);
   return typeof version === 'number' ? version : 0;
@@ -45,6 +58,8 @@ function parseBody(body: unknown): Partial<KvPayload> {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
+    if (!ensureKvEnv(res)) return;
+
     if (req.method === 'GET' && req.query.versionOnly) {
       const version = await getVersion();
       return res.status(200).json({ version });

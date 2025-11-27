@@ -26,7 +26,11 @@ export class KvStoreService {
     return this.http.post<{ ok: boolean; version?: number }>(`${this.baseUrl}/api/kv-products`, { products, categories });
   }
 
-  applyChanges(): Observable<{ ok: boolean; version?: number }> {
-    return this.http.post<{ ok: boolean; version?: number }>(`${this.baseUrl}/api/kv-products`, { action: 'apply' });
+  applyChanges(products: Product[], categories: string[]): Observable<{ ok: boolean; version?: number }> {
+    return this.http.post<{ ok: boolean; version?: number }>(`${this.baseUrl}/api/kv-products`, {
+      action: 'apply',
+      products,
+      categories,
+    });
   }
 }

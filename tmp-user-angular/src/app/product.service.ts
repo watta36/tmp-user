@@ -250,11 +250,13 @@ export class ProductService implements OnDestroy {
     try {
       const state = await firstValueFrom(this.kvStore.loadState());
       if (!state.products?.length) {
-        this.applyStateFromServer({
+        const seeded = {
           products: this.normalizeList(SEED),
           categories: this.normalizeCategories(SEED.map((p) => p.category)),
           version: state.version ?? 0,
-        });
+        } satisfies KvState;
+        this.applyStateFromServer(seeded);
+        await this.pushSnapshotToBackend(seeded);
         return;
       }
       this.applyStateFromServer(state);
@@ -279,13 +281,7 @@ export class ProductService implements OnDestroy {
   }
 
   async applyLatest() {
-    await this.persistState(true);
-    try {
-      const res = await firstValueFrom(this.kvStore.applyChanges());
-      if (res?.version !== undefined) this.serverVersion.set(res.version);
-    } catch (err) {
-      console.error('บังคับรีเฟรชไม่สำเร็จ', err);
-    }
+    await this.pushSnapshotToBackend({ products: this.products(), categories: this.categoryOptions() });
   }
 
   ngOnDestroy(): void {
@@ -308,6 +304,21 @@ export class ProductService implements OnDestroy {
       categories: [...this.categoryOptions()],
       version,
     };
+  }
+
+  private async pushSnapshotToBackend(state: { products: Product[]; categories: string[] }) {
+    try {
+      const res = await firstValueFrom(this.kvStore.applyChanges(state.products, state.categories));
+      const version = res?.version ?? this.serverVersion() + 1;
+      this.serverVersion.set(version);
+      this.lastSnapshot = {
+        products: [...state.products],
+        categories: [...state.categories],
+        version,
+      };
+    } catch (err) {
+      console.error('บันทึกข้อมูลไปยัง Edge Config/KV ไม่สำเร็จ', err);
+    }
   }
 
   private async persistState(throwOnError = false) {

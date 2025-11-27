@@ -191,6 +191,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .json({ ok: true, products: products.length, categories: categories.length, version: nextVersion });
       }
 
+      if (useEdgeConfig) {
+        const currentVersion = (await edgeConfigGet<number>(VERSION_KEY)) ?? 0;
+        const nextVersion = currentVersion + 1;
+        await edgeConfigSet({
+          [PRODUCTS_KEY]: products,
+          [CATEGORIES_KEY]: categories,
+          [VERSION_KEY]: nextVersion,
+        });
+        return res
+          .status(200)
+          .json({ ok: true, products: products.length, categories: categories.length, version: nextVersion });
+      }
+
       if (useKv) {
         await Promise.all([
           kv.set(PRODUCTS_KEY, products),

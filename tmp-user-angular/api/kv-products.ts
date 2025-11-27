@@ -25,7 +25,10 @@ type KvPayload = {
 const PRODUCTS_KEY = 'products';
 const CATEGORIES_KEY = 'categories';
 const VERSION_KEY = 'products_version';
-const LOCAL_FILE = path.join(process.cwd(), 'api', 'local-kv.json');
+// Vercel/Netlify serverless functions run on a read-only filesystem under the
+// project directory. Use a tmp path that stays writable at runtime so the
+// local fallback works even without KV/Edge Config env vars.
+const LOCAL_FILE = path.join(process.env.TMPDIR ?? '/tmp', 'local-kv.json');
 
 const hasKvEnv = () => ['KV_REST_API_URL', 'KV_REST_API_TOKEN'].every((key) => !!process.env[key]);
 const hasEdgeConfigEnv = () => ['EDGE_CONFIG_ID', 'EDGE_CONFIG_TOKEN'].every((key) => !!process.env[key]);
@@ -66,22 +69,36 @@ async function bumpVersion(): Promise<number> {
 
 type LocalState = { products: KvProduct[]; categories: string[]; version: number };
 
+// Keep an in-memory copy in case the filesystem is not writable (e.g. Vercel
+// read-only deployment folders). This lets the API respond instead of throwing
+// a 500 and at least preserve state during the current invocation.
+let localStateMemory: LocalState = { products: [], categories: [], version: 0 };
+
 async function readLocalState(): Promise<LocalState> {
   try {
     const content = await fs.readFile(LOCAL_FILE, 'utf8');
     const parsed = JSON.parse(content) as Partial<LocalState>;
-    return {
+    const state: LocalState = {
       products: Array.isArray(parsed.products) ? parsed.products : [],
       categories: Array.isArray(parsed.categories) ? parsed.categories : [],
       version: typeof parsed.version === 'number' ? parsed.version : 0,
     };
+    localStateMemory = state;
+    return state;
   } catch {
-    return { products: [], categories: [], version: 0 };
+    return localStateMemory;
   }
 }
 
 async function writeLocalState(data: LocalState) {
-  await fs.writeFile(LOCAL_FILE, JSON.stringify(data, null, 2), 'utf8');
+  localStateMemory = data;
+  try {
+    await fs.mkdir(path.dirname(LOCAL_FILE), { recursive: true });
+    await fs.writeFile(LOCAL_FILE, JSON.stringify(data, null, 2), 'utf8');
+  } catch {
+    // Ignore write errors (read-only FS). Memory copy still keeps latest state
+    // for the current function invocation.
+  }
 }
 
 function parseBody(body: unknown): Partial<KvPayload> {
@@ -177,19 +194,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const products = bodyProducts ?? [];
       const categories = bodyCategories ?? [];
-
-      if (useEdgeConfig) {
-        const currentVersion = (await edgeConfigGet<number>(VERSION_KEY)) ?? 0;
-        const nextVersion = currentVersion + 1;
-        await edgeConfigSet({
-          [PRODUCTS_KEY]: products,
-          [CATEGORIES_KEY]: categories,
-          [VERSION_KEY]: nextVersion,
-        });
-        return res
-          .status(200)
-          .json({ ok: true, products: products.length, categories: categories.length, version: nextVersion });
-      }
 
       if (useEdgeConfig) {
         const currentVersion = (await edgeConfigGet<number>(VERSION_KEY)) ?? 0;

@@ -1,8 +1,20 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { kv } from '@vercel/kv';
 
+function ensureKvEnv(res: VercelResponse): boolean {
+  const required = ['KV_REST_API_URL', 'KV_REST_API_TOKEN', 'KV_URL'];
+  const missing = required.filter((key) => !process.env[key]);
+  if (missing.length) {
+    res.status(500).json({ error: 'KV configuration missing', missing });
+    return false;
+  }
+  return true;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
+    if (!ensureKvEnv(res)) return;
+
     if (req.method === 'GET') {
       const value = (await kv.get<number>('counter')) ?? 0;
       return res.status(200).json({ counter: value });

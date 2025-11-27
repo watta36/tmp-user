@@ -1,7 +1,5 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { kv } from '@vercel/kv';
-import { promises as fs } from 'fs';
-import path from 'path';
+import type { VercelRequest, VercelResponse } from './vercel-types';
+import { hasKvEnv, kvGet, kvIncr, kvSet } from './kv-client';
 
 export type KvProduct = {
   id: number;
@@ -25,80 +23,50 @@ type KvPayload = {
 const PRODUCTS_KEY = 'products';
 const CATEGORIES_KEY = 'categories';
 const VERSION_KEY = 'products_version';
-// Vercel/Netlify serverless functions run on a read-only filesystem under the
-// project directory. Use a tmp path that stays writable at runtime so the
-// local fallback works even without KV/Edge Config env vars.
-const LOCAL_FILE = path.join(process.env.TMPDIR ?? '/tmp', 'local-kv.json');
 
-const hasKvEnv = () => ['KV_REST_API_URL', 'KV_REST_API_TOKEN'].every((key) => !!process.env[key]);
 const hasEdgeConfigEnv = () => ['EDGE_CONFIG_ID', 'EDGE_CONFIG_TOKEN'].every((key) => !!process.env[key]);
 
 type EdgeConfigResponse<T> = { items?: Record<string, T>; item?: { key: string; value: T } };
 
 async function edgeConfigGet<T>(key: string): Promise<T | null> {
   if (!hasEdgeConfigEnv()) return null;
-  const { EDGE_CONFIG_ID, EDGE_CONFIG_TOKEN } = process.env;
-  const res = await fetch(`https://edge-config.vercel.com/${EDGE_CONFIG_ID}/item/${key}?token=${EDGE_CONFIG_TOKEN}`);
-  if (!res.ok) return null;
-  const data = (await res.json()) as EdgeConfigResponse<T>;
-  return data.item?.value ?? null;
+  try {
+    const { EDGE_CONFIG_ID, EDGE_CONFIG_TOKEN } = process.env;
+    const res = await fetch(`https://edge-config.vercel.com/${EDGE_CONFIG_ID}/item/${key}?token=${EDGE_CONFIG_TOKEN}`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as EdgeConfigResponse<T>;
+    return data.item?.value ?? null;
+  } catch (err) {
+    console.error('Edge Config read failed', err);
+    return null;
+  }
 }
 
 async function edgeConfigSet(items: Record<string, unknown>): Promise<void> {
   if (!hasEdgeConfigEnv()) return;
-  const { EDGE_CONFIG_ID, EDGE_CONFIG_TOKEN } = process.env;
-  await fetch(`https://edge-config.vercel.com/${EDGE_CONFIG_ID}/items?token=${EDGE_CONFIG_TOKEN}`, {
-    method: 'PATCH',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      items: Object.entries(items).map(([key, value]) => ({ operation: 'upsert', key, value })),
-    }),
-  });
+  try {
+    const { EDGE_CONFIG_ID, EDGE_CONFIG_TOKEN } = process.env;
+    await fetch(`https://edge-config.vercel.com/${EDGE_CONFIG_ID}/items?token=${EDGE_CONFIG_TOKEN}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        items: Object.entries(items).map(([key, value]) => ({ operation: 'upsert', key, value })),
+      }),
+    });
+  } catch (err) {
+    console.error('Edge Config write failed', err);
+  }
 }
 
 async function getVersion(): Promise<number> {
-  const version = await kv.get<number>(VERSION_KEY);
+  const version = await kvGet<number>(VERSION_KEY);
   return typeof version === 'number' ? version : 0;
 }
 
 async function bumpVersion(): Promise<number> {
   const current = await getVersion();
-  const next = await kv.incr(VERSION_KEY);
+  const next = await kvIncr(VERSION_KEY);
   return typeof next === 'number' ? next : current + 1;
-}
-
-type LocalState = { products: KvProduct[]; categories: string[]; version: number };
-
-// Keep an in-memory copy in case the filesystem is not writable (e.g. Vercel
-// read-only deployment folders). This lets the API respond instead of throwing
-// a 500 and at least preserve state during the current invocation.
-let localStateMemory: LocalState = { products: [], categories: [], version: 0 };
-
-async function readLocalState(): Promise<LocalState> {
-  try {
-    const content = await fs.readFile(LOCAL_FILE, 'utf8');
-    const parsed = JSON.parse(content) as Partial<LocalState>;
-    const state: LocalState = {
-      products: Array.isArray(parsed.products) ? parsed.products : [],
-      categories: Array.isArray(parsed.categories) ? parsed.categories : [],
-      version: typeof parsed.version === 'number' ? parsed.version : 0,
-    };
-    localStateMemory = state;
-    return state;
-  } catch {
-    return localStateMemory;
-  }
-}
-
-async function writeLocalState(data: LocalState) {
-  localStateMemory = data;
-  try {
-    await fs.mkdir(path.dirname(LOCAL_FILE), { recursive: true });
-    await fs.writeFile(LOCAL_FILE, JSON.stringify(data, null, 2), 'utf8');
-  } catch {
-    // Ignore write errors (read-only FS). Memory copy still keeps latest state
-    // for the current function invocation.
-  }
 }
 
 function parseBody(body: unknown): Partial<KvPayload> {
@@ -114,14 +82,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const useEdgeConfig = hasEdgeConfigEnv();
     const useKv = !useEdgeConfig && hasKvEnv();
 
+    if (!useEdgeConfig && !useKv) {
+      return res.status(500).json({ error: 'No database configured. Set Edge Config or Vercel KV environment variables.' });
+    }
+
     if (req.method === 'GET' && req.query.versionOnly) {
       let version = 0;
       if (useEdgeConfig) {
         version = (await edgeConfigGet<number>(VERSION_KEY)) ?? 0;
       } else if (useKv) {
         version = await getVersion();
-      } else {
-        version = (await readLocalState()).version;
       }
       return res.status(200).json({ version });
     }
@@ -142,8 +112,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (useKv) {
         const [products, categories, version] = await Promise.all([
-          kv.get<KvProduct[]>(PRODUCTS_KEY),
-          kv.get<string[]>(CATEGORIES_KEY),
+          kvGet<KvProduct[]>(PRODUCTS_KEY),
+          kvGet<string[]>(CATEGORIES_KEY),
           getVersion(),
         ]);
         return res.status(200).json({
@@ -152,13 +122,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           version,
         });
       }
-
-      const state = await readLocalState();
-      return res.status(200).json({
-        products: state.products,
-        categories: state.categories,
-        version: state.version,
-      });
     }
 
     if (req.method === 'POST') {
@@ -178,18 +141,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         if (useKv) {
-          if (bodyProducts) await kv.set(PRODUCTS_KEY, bodyProducts);
-          if (bodyCategories) await kv.set(CATEGORIES_KEY, bodyCategories);
+          if (bodyProducts) await kvSet(PRODUCTS_KEY, bodyProducts);
+          if (bodyCategories) await kvSet(CATEGORIES_KEY, bodyCategories);
           const version = await bumpVersion();
           return res.status(200).json({ ok: true, version });
         }
-
-        const current = await readLocalState();
-        const products = bodyProducts ?? current.products;
-        const categories = bodyCategories ?? current.categories;
-        const nextVersion = current.version + 1;
-        await writeLocalState({ products, categories, version: nextVersion });
-        return res.status(200).json({ ok: true, version: nextVersion });
       }
 
       const products = bodyProducts ?? [];
@@ -210,17 +166,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (useKv) {
         await Promise.all([
-          kv.set(PRODUCTS_KEY, products),
-          kv.set(CATEGORIES_KEY, categories),
+          kvSet(PRODUCTS_KEY, products),
+          kvSet(CATEGORIES_KEY, categories),
         ]);
         const version = await bumpVersion();
         return res.status(200).json({ ok: true, products: products.length, categories: categories.length, version });
       }
-
-      const current = await readLocalState();
-      const nextVersion = current.version + 1;
-      await writeLocalState({ products, categories, version: nextVersion });
-      return res.status(200).json({ ok: true, products: products.length, categories: categories.length, version: nextVersion });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });

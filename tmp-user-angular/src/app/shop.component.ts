@@ -20,7 +20,6 @@ import { ProductService, Product } from './product.service';
         </div>
       </div>
       <button class="btn primary wide" (click)="orderCart()" [disabled]="!cart().length">สั่งทั้งตะกร้าผ่าน LINE</button>
-      <p class="muted small" style="margin:0">ตะกร้าเก็บไว้ให้อัตโนมัติ สามารถกลับมาแก้ไขได้ทุกเมื่อ</p>
     </div>
   </section>
 

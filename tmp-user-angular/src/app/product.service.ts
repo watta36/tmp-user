@@ -15,129 +15,6 @@ export type Product = {
   images?: string[];
 };
 
-function placeholder(name: string, emoji = '🦐', bg = '#e0f2fe'): string {
-  const safe = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='800' height='600'>
-  <rect width='100%' height='100%' fill='${bg}'/>
-  <text x='50%' y='45%' text-anchor='middle' font-size='96'>${emoji}</text>
-  <text x='50%' y='60%' text-anchor='middle' font-size='28' font-family='Arial, sans-serif'>${safe(name)}</text>
-</svg>`;
-  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
-}
-
-const SEED: Product[] = [
-  {
-    id: 5001,
-    name: 'กุ้งขาวแกะ 61/70 nw80% 1 กก.',
-    price: 210,
-    unit: 'แพ็ค 1 กก.',
-    category: 'กุ้ง',
-    sku: 'FB01',
-    description: 'กุ้งขาวแกะ ขนาด 61/70 ประมาณ 110–125 ตัว/กก. (nw80%)',
-    slug: 'shrimp-6170',
-    images: [placeholder('กุ้งขาวแกะ 61/70', '🦐', '#e0f2fe')],
-  },
-  {
-    id: 5002,
-    name: 'กุ้งแชบ๊วยหักหัว ไซส์รวม 2 กก.',
-    price: 199,
-    unit: 'แพ็ค 2 กก.',
-    category: 'กุ้ง',
-    sku: 'FB02',
-    description: 'กุ้งแชบ๊วยหักหัว ไซส์รวม เหมาะทำผัด/ทอด',
-    slug: 'shrimp-mixed',
-    images: [placeholder('กุ้งแชบ๊วยหักหัว', '🦐', '#e0f2fe')],
-  },
-  {
-    id: 5003,
-    name: 'กุ้งขาว 41/50 ต้ม ไว้หาง 500 กรัม',
-    price: 130,
-    unit: 'แพ็ค 500 กรัม',
-    category: 'กุ้ง',
-    sku: 'FB03',
-    description: 'กุ้งขาวต้ม ไว้หางพร้อมทาน',
-    slug: 'shrimp-cooked',
-    images: [placeholder('กุ้งขาวต้มไว้หาง', '🦐', '#e0f2fe')],
-  },
-  {
-    id: 5004,
-    name: 'กุ้งแม่น้ำ 7 ตัว (1 แถม 1) 500 กรัม',
-    price: 240,
-    unit: 'แพ็ค 500 กรัม',
-    category: 'กุ้ง',
-    sku: 'FB04',
-    description: 'กุ้งแม่น้ำ 7 ตัว/แพ็ค',
-    slug: 'river-prawn',
-    images: [placeholder('กุ้งแม่น้ำ', '🦐', '#e0f2fe')],
-  },
-  {
-    id: 5005,
-    name: 'ดอลลี่หั่น ไม่ติดท้อง Nw.60% 1 กก.',
-    price: 43,
-    unit: 'แพ็ค 1 กก.',
-    category: 'ปลา',
-    sku: 'FB05',
-    description: 'ปลาดอลลี่หั่น Nw60%',
-    slug: 'dolly-cut',
-    images: [placeholder('ดอลลี่หั่น', '🐟', '#e2f7e1')],
-  },
-  {
-    id: 5006,
-    name: 'ดอลลี่ตัว 3–4 ชิ้น Nw.70%',
-    price: 65,
-    unit: 'แพ็ค 1 กก.',
-    category: 'ปลา',
-    sku: 'FB06',
-    description: 'ดอลลี่ 3–4 ชิ้น/แพ็ค Nw70%',
-    slug: 'dolly-34',
-    images: [placeholder('ดอลลี่ 3–4 ชิ้น', '🐟', '#e2f7e1')],
-  },
-  {
-    id: 5007,
-    name: 'น้ำจิ้มซีฟูดส์แม่กระบอก 150–160 ml',
-    price: 35,
-    unit: 'ขวด',
-    category: 'ซอส/น้ำจิ้ม',
-    sku: 'FB07',
-    description: 'น้ำจิ้มซีฟูดส์พรีเมี่ยม',
-    slug: 'seafood-sauce',
-    images: [placeholder('น้ำจิ้มซีฟูดส์', '🧂', '#fff7d6')],
-  },
-  {
-    id: 5008,
-    name: 'น้ำจิ้มหวาน (สูตรแม่กระบอก) ขวดเล็ก',
-    price: 100,
-    unit: '3 ขวด/แพ็ค',
-    category: 'ซอส/น้ำจิ้ม',
-    sku: 'FB08',
-    description: 'น้ำจิ้มหวาน แพ็ค 3',
-    slug: 'sweet-chili',
-    images: [placeholder('น้ำจิ้มหวาน', '🧂', '#fff7d6')],
-  },
-  {
-    id: 5009,
-    name: 'น้ำปลากวน 250 ml (4 ขวด 100)',
-    price: 100,
-    unit: '4 ขวด/แพ็ค',
-    category: 'ซอส/น้ำจิ้ม',
-    sku: 'FB09',
-    description: 'น้ำปลากวน 250ml เซต',
-    slug: 'fish-sauce',
-    images: [placeholder('น้ำปลากวน', '🧂', '#fff7d6')],
-  },
-  {
-    id: 5010,
-    name: 'พริกแกงกาญ ขียวหวาน 500 กรัม',
-    price: 65,
-    unit: 'แพ็ค 500 กรัม',
-    category: 'พริกแกง',
-    sku: 'FB10',
-    description: 'พริกแกงเขียวหวาน',
-    slug: 'green-curry-paste',
-    images: [placeholder('พริกแกงเขียวหวาน', '🥣', '#ffe4f1')],
-  },
-];
-
 @Injectable({ providedIn: 'root' })
 export class ProductService implements OnDestroy {
   products = signal<Product[]>([]);
@@ -197,10 +74,7 @@ export class ProductService implements OnDestroy {
   }
 
   async resetToSeed() {
-    const normalized = this.normalizeList(SEED);
-    this.products.set(normalized);
-    this.categoryOptions.set(this.normalizeCategories(normalized.map((p) => p.category)));
-    await this.persistState();
+    await this.refreshFromServer();
   }
 
   async clearAll() {
@@ -249,26 +123,14 @@ export class ProductService implements OnDestroy {
   async refreshFromServer() {
     try {
       const state = await firstValueFrom(this.kvStore.loadState());
-      if (!state.products?.length) {
-        const seeded = {
-          products: this.normalizeList(SEED),
-          categories: this.normalizeCategories(SEED.map((p) => p.category)),
-          version: state.version ?? 0,
-        } satisfies KvState;
-        this.applyStateFromServer(seeded);
-        await this.pushSnapshotToBackend(seeded);
-        return;
-      }
-      this.applyStateFromServer(state);
+      this.applyStateFromServer({
+        products: state.products ?? [],
+        categories: state.categories ?? [],
+        version: state.version,
+      });
     } catch (err) {
       console.warn('โหลดข้อมูลจากฐานไม่สำเร็จ', err);
-      if (!this.products().length) {
-        this.applyStateFromServer({
-          products: this.normalizeList(SEED),
-          categories: this.normalizeCategories(SEED.map((p) => p.category)),
-          version: 0,
-        });
-      }
+      this.applyStateFromServer({ products: [], categories: [], version: this.serverVersion() });
     }
   }
 

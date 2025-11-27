@@ -81,7 +81,7 @@ export class AdminComponent {
   }
 
   reset() {
-    if (confirm('รีเซ็ตข้อมูลเป็นค่าเริ่มต้น?')) this.ps.resetToSeed();
+    if (confirm('โหลดข้อมูลล่าสุดจากฐานข้อมูล?')) this.ps.resetToSeed();
   }
 
   exportCsv() { this.ps.exportToCsv(); }

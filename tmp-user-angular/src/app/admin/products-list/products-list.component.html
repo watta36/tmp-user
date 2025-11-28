@@ -3,7 +3,6 @@
       <div>
         <p class="eyebrow">Store Console</p>
         <h2 style="margin:6px 0 4px">Admin</h2>
-        <p class="muted">จัดการสินค้าให้น่าใช้ ปรับราคา เปลี่ยนรูป และควบคุมสต็อกได้จากจุดเดียว</p>
       </div>
       <div class="admin-badge">พร้อมใช้งาน ✅</div>
     </header>
@@ -21,7 +20,6 @@
           <input class="input" [(ngModel)]="catInput" placeholder="เพิ่มหมวดหมู่ใหม่ เช่น กุ้ง / ปลา">
           <button class="btn primary" type="button" (click)="addCategory()">เพิ่ม</button>
         </div>
-        <p class="small muted">* หากเปลี่ยนชื่อหมวดหมู่ สินค้าเดิมที่ใช้ชื่อเดิมจะถูกอัปเดตอัตโนมัติ</p>
         <div class="category-list" *ngIf="ps.categories().length; else noCategories">
           <div class="category-row" *ngFor="let cat of ps.categories(); trackBy: trackCat">
             <input class="input" [ngModel]="catEdit[cat] ?? cat" (ngModelChange)="editCategory(cat, $event)">

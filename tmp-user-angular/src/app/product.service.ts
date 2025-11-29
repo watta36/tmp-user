@@ -130,7 +130,11 @@ export class ProductService implements OnDestroy {
       });
     } catch (err) {
       console.warn('โหลดข้อมูลจากฐานไม่สำเร็จ', err);
-      this.applyStateFromServer({ products: [], categories: [], version: this.serverVersion() });
+      // อย่ารีเซ็ตสถานะในแอปเป็นค่าว่างเมื่อโหลดล้มเหลว เพราะมักเป็นเพียงข้อผิดพลาดชั่วคราว
+      // การคง state เดิมช่วยหลีกเลี่ยงการคิดว่าฐานข้อมูลว่างและอาจเขียนค่าว่างกลับไปที่ backend
+      if (this.lastSnapshot) {
+        this.applyStateFromServer(this.lastSnapshot);
+      }
     }
   }
 

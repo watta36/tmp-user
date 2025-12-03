@@ -1,5 +1,5 @@
-import type { VercelRequest, VercelResponse } from './vercel-types';
-import { hasKvEnv, kvGet, kvIncr, kvSet } from './kv-client';
+import type { VercelRequest, VercelResponse } from './vercel-types.js';
+import { hasKvEnv, kvGet, kvIncr, kvSet } from './kv-client.js';
 
 const hasEdgeConfigEnv = () => ['EDGE_CONFIG_ID', 'EDGE_CONFIG_TOKEN'].every((key) => !!process.env[key]);
 

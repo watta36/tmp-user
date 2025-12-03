@@ -1,5 +1,5 @@
 import { MongoClient, type Db, type Collection } from 'mongodb';
-import type { ProductDocument } from './product-schema';
+import type { ProductDocument } from './product-schema.js';
 
 const uri = process.env.MONGODB_URI;
 const dbName = process.env.MONGODB_DB || 'ecommerce';

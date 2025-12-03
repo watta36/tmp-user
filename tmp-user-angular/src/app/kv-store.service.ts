@@ -7,6 +7,7 @@ import { APP_CONFIG } from './config';
 export type KvState = {
   products: Product[];
   categories: string[];
+  theme?: string;
   version?: number;
 };
 
@@ -23,11 +24,12 @@ export class KvStoreService {
     return this.http.get<{ version: number }>(`${this.baseUrl}/api/kv-products`, { params: { versionOnly: true } });
   }
 
-  applyChanges(products: Product[], categories: string[]): Observable<{ ok: boolean; version?: number }> {
+  applyChanges(products: Product[], categories: string[], theme: string): Observable<{ ok: boolean; version?: number }> {
     return this.http.post<{ ok: boolean; version?: number }>(`${this.baseUrl}/api/kv-products`, {
       action: 'apply',
       products,
       categories,
+      theme,
     });
   }
 

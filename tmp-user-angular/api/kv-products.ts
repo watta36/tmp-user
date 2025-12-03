@@ -4,13 +4,15 @@ import { normalizeProducts, parseCsvProducts, type ProductDocument, type Product
 
 const VERSION_KEY = 'products_version';
 const CATEGORY_KEY = 'products_categories';
+const THEME_KEY = 'products_theme';
 const META_COLLECTION = 'metadata';
+const DEFAULT_THEME = 'aqua';
 
-function parseBody(body: unknown): Partial<{ products: ProductPayload[]; categories: string[]; action?: 'apply' | 'preview'; csv?: string; }> {
+function parseBody(body: unknown): Partial<{ products: ProductPayload[]; categories: string[]; action?: 'apply' | 'preview'; csv?: string; theme?: string; }> {
   if (typeof body === 'string') {
     try { return JSON.parse(body); } catch { return {}; }
   }
-  if (body && typeof body === 'object') return body as Partial<{ products: ProductPayload[]; categories: string[]; action?: 'apply' | 'preview'; csv?: string; }>;
+  if (body && typeof body === 'object') return body as Partial<{ products: ProductPayload[]; categories: string[]; action?: 'apply' | 'preview'; csv?: string; theme?: string; }>;
   return {};
 }
 
@@ -43,6 +45,21 @@ async function saveCategories(list: string[]) {
   );
 }
 
+async function getTheme(): Promise<string> {
+  const db = await getDb();
+  const meta = await db.collection<{ _id: string; value: string }>(META_COLLECTION).findOne({ _id: THEME_KEY });
+  return normalizeTheme(meta?.value);
+}
+
+async function saveTheme(theme: string) {
+  const db = await getDb();
+  await db.collection<{ _id: string; value: unknown }>(META_COLLECTION).findOneAndUpdate(
+    { _id: THEME_KEY },
+    { $set: { value: normalizeTheme(theme) } },
+    { upsert: true },
+  );
+}
+
 async function bumpVersion() {
   const db = await getDb();
   const result = await db.collection<{ _id: string; value: number }>(META_COLLECTION).findOneAndUpdate(
@@ -69,6 +86,11 @@ function normalizeCategories(list: string[]): string[] {
   return Array.from(new Set(list.map((c) => c.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'th'));
 }
 
+function normalizeTheme(id?: string | null): string {
+  const trimmed = (id || '').trim();
+  return trimmed || DEFAULT_THEME;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (req.method === 'GET' && req.query.versionOnly) {
@@ -76,34 +98,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ version });
     }
 
-    if (req.method === 'GET') {
-      const collection = await getProductsCollection();
-      const [items, storedCategories, version] = await Promise.all([
-        collection.find({}).sort({ id: 1 }).toArray(),
-        getCategories(),
-        getVersion(),
-      ]);
-      const products = items.map(({ _id, ...doc }: ProductDocument & { _id?: unknown }) => ({ ...doc }));
-      const derivedCategories = collectCategories(products);
-      const categories = storedCategories?.length ? storedCategories : derivedCategories;
-      return res.status(200).json({ products, categories, version });
+  if (req.method === 'GET') {
+    const collection = await getProductsCollection();
+    const [items, storedCategories, version, theme] = await Promise.all([
+      collection.find({}).sort({ id: 1 }).toArray(),
+      getCategories(),
+      getVersion(),
+      getTheme(),
+    ]);
+    const products = items.map(({ _id, ...doc }: ProductDocument & { _id?: unknown }) => ({ ...doc }));
+    const derivedCategories = collectCategories(products);
+    const categories = storedCategories?.length ? storedCategories : derivedCategories;
+    return res.status(200).json({ products, categories, theme: normalizeTheme(theme), version });
+  }
+
+  if (req.method === 'POST') {
+    const payload = parseBody(req.body);
+    const csvText = typeof payload.csv === 'string' ? payload.csv : undefined;
+    const fromCsv = csvText ? parseCsvProducts(csvText) : [];
+    const incomingList = Array.isArray(payload.products) ? payload.products : [];
+    const normalized = fromCsv.length ? fromCsv : normalizeProducts(incomingList);
+    const incomingTheme = normalizeTheme(payload.theme);
+
+    if (payload.action === 'preview') {
+      const categories = collectCategories(normalized, payload.categories);
+      return res.status(200).json({ ok: true, products: normalized, categories, theme: incomingTheme });
     }
 
-    if (req.method === 'POST') {
-      const payload = parseBody(req.body);
-      const csvText = typeof payload.csv === 'string' ? payload.csv : undefined;
-      const fromCsv = csvText ? parseCsvProducts(csvText) : [];
-      const incomingList = Array.isArray(payload.products) ? payload.products : [];
-      const normalized = fromCsv.length ? fromCsv : normalizeProducts(incomingList);
-
-      if (payload.action === 'preview') {
-        const categories = collectCategories(normalized, payload.categories);
-        return res.status(200).json({ ok: true, products: normalized, categories });
-      }
-
-      const result = await replaceProducts(normalized, payload.categories);
-      return res.status(200).json({ ok: true, products: normalized.length, categories: result.categories, version: result.version });
-    }
+    const result = await replaceProducts(normalized, payload.categories);
+    await saveTheme(incomingTheme);
+    return res.status(200).json({
+      ok: true,
+      products: normalized.length,
+      categories: result.categories,
+      theme: incomingTheme,
+      version: result.version,
+    });
+  }
 
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {

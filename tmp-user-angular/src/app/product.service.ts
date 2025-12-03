@@ -22,11 +22,33 @@ export class ProductService implements OnDestroy {
   private serverVersion = signal<number>(0);
   private lastSnapshot: KvState | null = null;
   private versionPoller?: ReturnType<typeof setInterval>;
+  private autoApplyTimer?: ReturnType<typeof setTimeout>;
   pendingChanges = signal(false);
 
   constructor(private kvStore: KvStoreService) {
     this.refreshFromServer();
     this.startVersionPolling();
+  }
+
+  private markDirty() {
+    this.pendingChanges.set(true);
+    this.queueAutoApply();
+  }
+
+  private queueAutoApply() {
+    if (typeof window === 'undefined') return;
+    if (this.autoApplyTimer) clearTimeout(this.autoApplyTimer);
+    this.autoApplyTimer = setTimeout(() => this.runAutoApply(), 1200);
+  }
+
+  private async runAutoApply() {
+    this.autoApplyTimer = undefined;
+    try {
+      await this.applyLatest();
+    } catch (err) {
+      console.error('บันทึกอัตโนมัติไม่สำเร็จ', err);
+      this.pendingChanges.set(true);
+    }
   }
 
   list() { return this.products(); }
@@ -35,7 +57,7 @@ export class ProductService implements OnDestroy {
   async addCategory(name: string) {
     const normalized = this.normalizeCategories([name, ...this.categoryOptions()]);
     this.categoryOptions.set(normalized);
-    this.pendingChanges.set(true);
+    this.markDirty();
   }
 
   async renameCategory(prevName: string, nextName: string) {
@@ -46,13 +68,13 @@ export class ProductService implements OnDestroy {
     this.products.set(
       this.products().map((p) => (p.category === prevName ? this.normalizeProduct({ ...p, category: newName }) : p))
     );
-    this.pendingChanges.set(true);
+    this.markDirty();
   }
 
   async removeCategory(name: string) {
     this.categoryOptions.set(this.categoryOptions().filter((c) => c !== name));
     this.products.set(this.products().map((p) => (p.category === name ? this.normalizeProduct({ ...p, category: '' }) : p)));
-    this.pendingChanges.set(true);
+    this.markDirty();
   }
 
   async add(p: Omit<Product, 'id'>) {
@@ -60,18 +82,18 @@ export class ProductService implements OnDestroy {
     const product = this.normalizeProduct({ id: nextId, ...p } as Product);
     this.products.set([product, ...this.products()]);
     this.ensureCategoryExists(product.category);
-    this.pendingChanges.set(true);
+    this.markDirty();
   }
 
   async update(id: number, patch: Partial<Product>) {
     this.products.set(this.products().map(p => p.id === id ? this.normalizeProduct({ ...p, ...patch, id: p.id }) : p));
     if (patch.category) this.ensureCategoryExists(patch.category);
-    this.pendingChanges.set(true);
+    this.markDirty();
   }
 
   async remove(id: number) {
     this.products.set(this.products().filter(p => p.id !== id));
-    this.pendingChanges.set(true);
+    this.markDirty();
   }
 
   async resetToSeed() {
@@ -81,7 +103,7 @@ export class ProductService implements OnDestroy {
   async clearAll() {
     this.products.set([]);
     this.categoryOptions.set([]);
-    this.pendingChanges.set(true);
+    this.markDirty();
   }
 
   exportToCsv(filename = 'products.csv') {
@@ -109,7 +131,7 @@ export class ProductService implements OnDestroy {
       ? this.normalizeCategories(result.categories)
       : this.normalizeCategories(normalizedProducts.map((p) => p.category));
     this.categoryOptions.set(categories);
-    this.pendingChanges.set(true);
+    this.markDirty();
     return { imported: normalizedProducts.length, skipped: 0 };
   }
 
@@ -140,6 +162,10 @@ export class ProductService implements OnDestroy {
   }
 
   async applyLatest() {
+    if (this.autoApplyTimer) {
+      clearTimeout(this.autoApplyTimer);
+      this.autoApplyTimer = undefined;
+    }
     await this.pushSnapshotToBackend({ products: this.products(), categories: this.categoryOptions() });
     this.pendingChanges.set(false);
   }

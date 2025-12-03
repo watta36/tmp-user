@@ -21,9 +21,9 @@
   gap: 8px;
   padding: 8px 12px;
   border-radius: 999px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  color: #0f172a;
+  background: var(--admin-pill-ghost);
+  border: 1px solid var(--admin-pill-ghost-border);
+  color: var(--admin-ink);
   font-weight: 700;
   font-size: 12.8px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
@@ -33,23 +33,86 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #22c55e;
-  box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.12);
+  background: var(--admin-success);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--admin-success) 20%, transparent);
 }
 
 .toolbar-status--dirty {
-  background: #fff7ed;
-  border-color: #fdba74;
-  color: #9a3412;
+  background: color-mix(in srgb, var(--admin-primary) 10%, var(--admin-surface));
+  border-color: color-mix(in srgb, var(--admin-primary) 35%, var(--admin-border));
+  color: var(--admin-ink);
 }
 
 .toolbar-status--dirty .dot {
-  background: #f97316;
-  box-shadow: 0 0 0 6px rgba(249, 115, 22, 0.14);
+  background: var(--admin-primary);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--admin-primary) 22%, transparent);
 }
 
 .toolbar-status .label {
   white-space: nowrap;
+}
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.theme-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+  color: var(--admin-ink);
+  cursor: pointer;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.14s ease;
+  box-shadow: 0 10px 24px -20px color-mix(in srgb, var(--admin-primary) 45%, transparent);
+  text-align: left;
+}
+
+.theme-card:hover {
+  border-color: color-mix(in srgb, var(--admin-primary) 30%, var(--admin-border));
+  box-shadow: 0 14px 36px -22px color-mix(in srgb, var(--admin-primary) 55%, transparent);
+}
+
+.theme-card:active { transform: translateY(1px); }
+
+.theme-card.active {
+  border-color: color-mix(in srgb, var(--admin-primary) 60%, var(--admin-border));
+  box-shadow: 0 16px 42px -24px color-mix(in srgb, var(--admin-primary) 75%, transparent);
+}
+
+.theme-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background-size: cover;
+  background-position: center;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 10px 24px -18px rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--admin-border);
+}
+
+.theme-card__body { flex: 1; min-width: 0; }
+
+.theme-name {
+  margin: 0 0 4px;
+  font-weight: 800;
+  color: var(--admin-ink);
+}
+
+.theme-check {
+  font-weight: 800;
+  color: var(--admin-primary);
+  opacity: 0;
+  transition: opacity 0.16s ease;
+}
+
+.theme-card.active .theme-check {
+  opacity: 1;
 }
 
 .file-btn {
@@ -82,29 +145,29 @@
   font-weight: 700;
   font-size: 12.5px;
   letter-spacing: 0.01em;
-  color: #6b7280;
-  border-bottom: 1px solid #e5e7eb;
+  color: var(--admin-muted);
+  border-bottom: 1px solid var(--admin-border);
   white-space: nowrap;
 }
 
 /* แถวข้อมูล */
 .admin-table tbody tr {
-  background: #ffffff;
+  background: var(--admin-surface);
   transition: background 0.08s ease;      /* ให้ hover นุ่ม ๆ */
 }
 
 .admin-table tbody tr:nth-child(even) {
-  background: #fafbff;
+  background: var(--admin-table-zebra);
 }
 
 .admin-table tbody tr:hover {
-  background: #eef2ff;                    /* hover แล้วดูเป็นก้อนขึ้นนิดหน่อย */
+  background: var(--admin-table-hover);                    /* hover แล้วดูเป็นก้อนขึ้นนิดหน่อย */
 }
 
 .admin-table tbody td {
   padding: 8px;
   vertical-align: top;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid color-mix(in srgb, var(--admin-border) 80%, var(--admin-surface));
 }
 
 /* เซลล์ + label (ใช้บนมือถือด้วย) */
@@ -112,7 +175,7 @@
   position: relative;
   word-break: break-word;
   line-height: 1.3;
-  color: #1f2933;
+  color: var(--admin-ink);
 }
 
 /* input / textarea ในเซลล์ */
@@ -204,7 +267,7 @@
 
   /* เส้นปะคั่นคอลัมน์ปุ่มจัดการ */
   .admin-table tbody td.tr-actions {
-    border-left: 1px dashed #e5e7eb;
+    border-left: 1px dashed var(--admin-border);
     padding-left: 12px;
   }
 }
@@ -238,9 +301,9 @@
   min-height: 34px;
   padding: 6px 10px;
   border-radius: 999px;
-  background: #f8fafc;
-  color: #0f172a;
-  border: 1px solid #e2e8f0;
+  background: var(--admin-pill-ghost);
+  color: var(--admin-ink);
+  border: 1px solid var(--admin-pill-ghost-border);
   font-size: 12.4px;
   font-weight: 600;
   letter-spacing: 0.01em;
@@ -257,9 +320,9 @@
 .admin-row-actions .pill-btn .label { line-height: 1.2; }
 
 .admin-row-actions .pill-btn:hover {
-  background: #eef2ff;
-  border-color: #c7d2fe;
-  box-shadow: 0 1px 0 rgba(99, 102, 241, 0.18);
+  background: color-mix(in srgb, var(--admin-primary) 10%, var(--admin-pill-ghost));
+  border-color: color-mix(in srgb, var(--admin-primary) 30%, var(--admin-pill-ghost-border));
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--admin-primary) 18%, transparent);
 }
 
 .admin-row-actions .pill-btn:active {
@@ -267,15 +330,15 @@
 }
 
 .admin-row-actions .pill-btn.ghost {
-  background: #f8fafc;
-  border-color: #e2e8f0;
-  color: #0f172a;
+  background: var(--admin-pill-ghost);
+  border-color: var(--admin-pill-ghost-border);
+  color: var(--admin-ink);
 }
 
 .admin-row-actions .pill-btn.success {
-  background: #ecfdf3;
-  border-color: #bbf7d0;
-  color: #15803d;
+  background: color-mix(in srgb, var(--admin-success) 10%, var(--admin-pill-ghost));
+  border-color: color-mix(in srgb, var(--admin-success) 35%, var(--admin-pill-ghost-border));
+  color: color-mix(in srgb, var(--admin-success) 65%, var(--admin-ink));
 }
 
 .admin-row-actions .pill-btn.danger {
@@ -293,7 +356,7 @@
 
 .admin-row-actions .action-subtext {
   font-size: 11.5px;
-  color: #94a3b8;
+  color: color-mix(in srgb, var(--admin-muted) 85%, var(--admin-ink));
   line-height: 1.35;
   text-align: center;
 }
@@ -311,9 +374,9 @@
 }
 
 .action-row--balanced .btn.ghost {
-  background: #f8fafc;
-  border-color: #e2e8f0;
-  color: #0f172a;
+  background: var(--admin-pill-ghost);
+  border-color: var(--admin-pill-ghost-border);
+  color: var(--admin-ink);
 }
 
 /* ย่อปุ่มลงอีกนิดในจอไม่กว้างมาก เพื่อกันล้น */
@@ -343,7 +406,7 @@
 
   .admin-table tbody tr {
     display: block;
-    background: #ffffff;
+    background: var(--admin-surface);
     border-radius: 16px;
     box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
     padding: 10px 12px;
@@ -363,7 +426,7 @@
     display: block;
     font-size: 11px;
     font-weight: 600;
-    color: #9ca3af;
+    color: color-mix(in srgb, var(--admin-muted) 82%, var(--admin-ink));
     margin-bottom: 2px;
   }
 
@@ -398,7 +461,7 @@
   .admin-table tbody td.tr-actions {
     margin-top: 6px;
     padding-top: 8px;
-    border-top: 1px dashed #e5e7eb;
+    border-top: 1px dashed var(--admin-border);
   }
 
   .admin-row-actions {

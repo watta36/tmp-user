@@ -34,3 +34,8 @@ npm run build → dist/tmp-user/browser
   - บันทึก snapshot (เพิ่ม ลบ แก้ไข) ผ่าน `saveState` หรือ `applyChanges` ซึ่งจะเขียนลง collection และเพิ่มเลข version.
   - การนำเข้าไฟล์ CSV ส่งไฟล์ขึ้น backend → backend เป็นคน parse และ `insertMany` ลง Mongo ก่อนตอบยอดที่นำเข้า จากนั้นแอปจะ refresh state จากฐานจริง.
 - Endpoint รองรับ `GET ?versionOnly=true` สำหรับตรวจสอบเลขเวอร์ชัน ใช้กับการ polling ของฝั่ง storefront.
+
+### Tips for "bad auth" / Atlas authentication errors
+- ตรวจสอบให้แน่ใจว่า `MONGODB_URI` มี user/password ที่ URL encode แล้ว (เช่น `@` → `%40`).
+- ถ้า user ถูกสร้างไว้ใน database อื่น (เช่น `ecommerce`) ให้ตั้ง `MONGODB_AUTH_SOURCE` เป็นชื่อฐานนั้น หรือเพิ่ม `authSource` ลงใน connection string.
+- แอปจะ log authSource ที่ถูกใช้ (จาก env หรือ query string) เพื่อช่วย debug เมื่อเจอ error รหัส 8000 จาก Atlas.

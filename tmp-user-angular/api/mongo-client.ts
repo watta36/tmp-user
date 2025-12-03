@@ -5,6 +5,8 @@ const uri = resolveMongoUri();
 const dbName = process.env.MONGODB_DB || 'ecommerce';
 const collectionName = process.env.MONGODB_COLLECTION || 'products';
 const authSource = process.env.MONGODB_AUTH_SOURCE;
+const authSourceFromUri = uri ? extractAuthSource(uri) : undefined;
+const resolvedAuthSource = authSource || authSourceFromUri;
 
 let client: MongoClient | null = null;
 
@@ -18,6 +20,18 @@ function resolveMongoUri(): string | undefined {
   return raw?.trim();
 }
 
+function extractAuthSource(rawUri: string): string | undefined {
+  const queryIndex = rawUri.indexOf('?');
+  if (queryIndex === -1) return undefined;
+  try {
+    const params = new URLSearchParams(rawUri.slice(queryIndex + 1));
+    const found = params.get('authSource') ?? params.get('authsource');
+    return found?.trim() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function isClientOpen(candidate: MongoClient | null): candidate is MongoClient {
   if (!candidate) return false;
   const topology = (candidate as MongoClient & { topology?: TopologyState }).topology;
@@ -29,16 +43,17 @@ function isClientOpen(candidate: MongoClient | null): candidate is MongoClient {
 async function getClient(): Promise<MongoClient> {
   if (!uri) throw new Error('Missing MONGODB_URI environment variable');
   if (isClientOpen(client)) return client;
-  const options: MongoClientOptions = authSource ? { authSource } : {};
+  const options: MongoClientOptions = resolvedAuthSource ? { authSource: resolvedAuthSource } : {};
   client = new MongoClient(uri, options);
   try {
     await client.connect();
   } catch (err) {
     client = null;
     if (err instanceof MongoServerError && err.codeName === 'AtlasError' && err.code === 8000) {
+      const authSourceHint = resolvedAuthSource ?? 'default from URI (admin for SRV URIs)';
       throw new Error(
         'MongoDB authentication failed. Check that your username/password are URL encoded correctly and match the cluster ' +
-          'users, and that the authSource/database in the URI (or MONGODB_AUTH_SOURCE) is correct.',
+          `users, and that the authSource/database in the URI (or MONGODB_AUTH_SOURCE) is correct. Current authSource: ${authSourceHint}; data database: ${dbName}.`,
       );
     }
     throw err;

@@ -1,6 +1,6 @@
-import type { VercelRequest, VercelResponse } from './vercel-types';
-import { getDb, getProductsCollection } from './mongo-client';
-import { normalizeProducts, parseCsvProducts, type ProductDocument, type ProductPayload } from './product-schema';
+import type { VercelRequest, VercelResponse } from './vercel-types.js';
+import { getDb, getProductsCollection } from './mongo-client.js';
+import { normalizeProducts, parseCsvProducts, type ProductDocument, type ProductPayload } from './product-schema.js';
 
 const VERSION_KEY = 'products_version';
 const META_COLLECTION = 'metadata';

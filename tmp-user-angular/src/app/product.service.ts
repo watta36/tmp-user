@@ -101,23 +101,9 @@ export class ProductService implements OnDestroy {
 
   async importFromCsv(file: File) {
     const text = await file.text();
-    const rows = this.parseCsv(text);
-    if (!rows.length) throw new Error('ไฟล์ว่าง');
-
-    const headers = rows[0].map((h) => h.trim());
-    const records = rows.slice(1).map((cells) => this.cellsToRecord(headers, cells));
-    const products: Product[] = [];
-    let skipped = 0;
-    for (const r of records) {
-      const p = this.recordToProduct(r);
-      if (p) products.push(p); else skipped++;
-    }
-
-    const deduped = this.dedupById(products);
-    this.products.set(deduped);
-    this.categoryOptions.set(this.normalizeCategories(deduped.map((p) => p.category)));
-    await this.persistState();
-    return { imported: deduped.length, skipped };
+    const result = await firstValueFrom(this.kvStore.importCsv(text));
+    await this.refreshFromServer();
+    return { imported: result?.products ?? 0, skipped: 0 };
   }
 
   async refreshFromServer() {
@@ -226,69 +212,6 @@ export class ProductService implements OnDestroy {
       return '"' + raw.replace(/"/g, '""') + '"';
     }
     return raw;
-  }
-
-  private parseCsv(text: string): string[][] {
-    const rows: string[][] = [];
-    let current = '';
-    let row: string[] = [];
-    let inQuotes = false;
-    for (let i = 0; i < text.length; i++) {
-      const ch = text[i];
-      if (inQuotes) {
-        if (ch === '"') {
-          if (text[i + 1] === '"') { current += '"'; i++; }
-          else { inQuotes = false; }
-        } else current += ch;
-      } else {
-        if (ch === '"') inQuotes = true;
-        else if (ch === ',') { row.push(current); current = ''; }
-        else if (ch === '\n') { row.push(current); rows.push(row); row = []; current = ''; }
-        else if (ch === '\r') { /* ignore */ }
-        else current += ch;
-      }
-    }
-    if (current || row.length) { row.push(current); rows.push(row); }
-    return rows.filter(r => r.some(cell => cell.trim() !== ''));
-  }
-
-  private cellsToRecord(headers: string[], cells: string[]) {
-    const rec: Record<string, string> = {};
-    headers.forEach((h, idx) => rec[h || `col_${idx}`] = cells[idx] ?? '');
-    return rec;
-  }
-
-  private recordToProduct(r: Record<string, string>): Product | null {
-    const id = Number(r.id ?? r.ID ?? r.Id ?? r['รหัส']);
-    const name = (r.name ?? r.Name ?? '').toString().trim();
-    const price = Number(r.price ?? r.Price ?? 0);
-    const unit = (r.unit ?? r.Unit ?? '').toString().trim();
-    const category = (r.category ?? r.Category ?? '').toString().trim();
-    const sku = (r.sku ?? r.SKU ?? '').toString().trim();
-    const description = (r.description ?? r.Description ?? '').toString();
-    const image = (r.image ?? r.Image ?? '').toString();
-    const rawImages = (r.images ?? r.Images ?? '').toString();
-    const images = rawImages
-      .split(/\||\n|,/)
-      .map((v) => v.trim())
-      .filter(Boolean);
-    if (image) images.unshift(image);
-    const slug = (r.slug ?? r.Slug ?? '').toString().trim() || this.slugify(name);
-
-    if (!id || !name || !unit || !category || Number.isNaN(price)) return null;
-    return this.normalizeProduct({ id, name, price, unit, category, sku, description, image, images, slug });
-  }
-
-  private dedupById(list: Product[]) {
-    const seen = new Set<number>();
-    const keep: Product[] = [];
-    for (let i = list.length - 1; i >= 0; i--) {
-      const p = list[i];
-      if (seen.has(p.id)) continue;
-      seen.add(p.id);
-      keep.push(p);
-    }
-    return keep.reverse();
   }
 
   private slugify(s: string) {

@@ -34,4 +34,8 @@ export class KvStoreService {
       categories,
     });
   }
+
+  importCsv(csv: string): Observable<{ ok: boolean; products: number; categories: string[]; version?: number }> {
+    return this.http.post<{ ok: boolean; products: number; categories: string[]; version?: number }>(`${this.baseUrl}/api/kv-products`, { csv });
+  }
 }

@@ -1,4 +1,4 @@
-<section class="container admin-shell">
+<section class="container admin-shell" [ngClass]="'theme-' + currentTheme()">
     <header class="admin-hero">
       <div>
         <p class="eyebrow">Store Console</p>
@@ -6,6 +6,32 @@
       </div>
       <div class="admin-badge">พร้อมใช้งาน ✅</div>
     </header>
+
+    <div class="panel admin-card theme-panel">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">โหมดการแสดงผล</p>
+          <h3 style="margin:4px 0">ปรับธีมหน้าผู้ดูแล</h3>
+          <p class="small muted">เลือก 1 ใน 4 ธีมทันสมัย เพื่อให้เข้ากับร้านของคุณ</p>
+        </div>
+        <div class="pill">{{ themes.find(t => t.id === currentTheme())?.name }}</div>
+      </div>
+      <div class="theme-grid">
+        <button
+          class="theme-card"
+          type="button"
+          *ngFor="let theme of themes"
+          [class.active]="theme.id === currentTheme()"
+          (click)="setTheme(theme.id)">
+          <span class="theme-thumb" [style.background-image]="theme.preview"></span>
+          <div class="theme-card__body">
+            <div class="theme-name">{{ theme.name }}</div>
+            <p class="small muted">{{ theme.description }}</p>
+          </div>
+          <span class="theme-check" aria-hidden="true">✓</span>
+        </button>
+      </div>
+    </div>
 
     <div class="admin-grid">
       <div class="panel admin-card">
@@ -49,7 +75,6 @@
           <button class="btn" (click)="logout()">Logout</button>
           <button class="btn danger" (click)="reset()">Reset ข้อมูลเริ่มต้น</button>
           <button class="btn" (click)="exportCsv()">Export เป็น Excel/CSV</button>
-          <button class="btn success" type="button" (click)="applyChanges()" [disabled]="applying() || !ps.pendingChanges()">Apply</button>
           <label class="btn ghost file-btn">
             <span *ngIf="!importing()">Import Excel/CSV</span>
             <span *ngIf="importing()">กำลังนำเข้า...</span>
@@ -58,7 +83,7 @@
           <button class="btn danger ghost" (click)="clearAllProducts()">ลบสินค้าทั้งหมด</button>
           <div class="toolbar-status" [class.toolbar-status--dirty]="ps.pendingChanges()">
             <span class="dot"></span>
-            <span class="label" *ngIf="ps.pendingChanges(); else cleanState">มีการแก้ไขรอ Apply</span>
+            <span class="label" *ngIf="ps.pendingChanges(); else cleanState">กำลังบันทึกอัตโนมัติ...</span>
             <ng-template #cleanState><span class="label">ข้อมูลเผยแพร่ล่าสุดแล้ว</span></ng-template>
           </div>
         </div>
@@ -104,7 +129,7 @@
             <p class="eyebrow">รายการสินค้า</p>
             <h3 style="margin:4px 0">แก้ไขได้ทันที</h3>
           </div>
-          <div class="pill pill-ghost">แก้ไขแล้วจะรอจนกด Apply</div>
+          <div class="pill pill-ghost">แก้ไขแล้วบันทึกอัตโนมัติ</div>
         </div>
         <div class="table-wrap admin-table-wrap">
           <table class="table admin-table">

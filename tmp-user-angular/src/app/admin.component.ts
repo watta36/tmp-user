@@ -29,9 +29,47 @@ export class AdminComponent {
     images: [],
   };
   importing = signal(false);
-  applying = signal(false);
+  themes = [
+    {
+      id: 'aqua',
+      name: 'Aqua Flow',
+      description: 'โทนฟ้าใส สะอาดตา เน้นความเรียบง่าย',
+      preview: 'linear-gradient(120deg, #0ea5e9, #38bdf8)',
+    },
+    {
+      id: 'sunset',
+      name: 'Sunset Amber',
+      description: 'โทนส้มอุ่น ๆ ดูเป็นกันเองสำหรับแผงขาย',
+      preview: 'linear-gradient(120deg, #fb923c, #f97316)',
+    },
+    {
+      id: 'forest',
+      name: 'Forest Matcha',
+      description: 'โทนเขียวพาสเทล ให้ความรู้สึกสดชื่น',
+      preview: 'linear-gradient(120deg, #22c55e, #84cc16)',
+    },
+    {
+      id: 'noir',
+      name: 'Noir Velvet',
+      description: 'โทนมืดพรีเมียม เน้นตัวอักษรอ่านง่าย',
+      preview: 'linear-gradient(120deg, #0f172a, #1e293b)',
+    },
+  ];
+  currentTheme = signal(this.loadTheme());
 
   constructor(public ps: ProductService, public auth: AuthService) {}
+
+  setTheme(themeId: string) {
+    this.currentTheme.set(themeId);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('admin-theme', themeId);
+    }
+  }
+
+  loadTheme() {
+    if (typeof localStorage === 'undefined') return 'aqua';
+    return localStorage.getItem('admin-theme') || 'aqua';
+  }
 
   async onUploadNew(ev: Event) {
     const input = ev.target as HTMLInputElement;
@@ -85,19 +123,6 @@ export class AdminComponent {
   }
 
   exportCsv() { this.ps.exportToCsv(); }
-
-  async applyChanges() {
-    this.applying.set(true);
-    try {
-      await this.ps.applyLatest();
-      alert('เผยแพร่ข้อมูลให้ลูกค้าเรียบร้อยแล้ว');
-    } catch (err) {
-      console.error(err);
-      alert('เผยแพร่ข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง');
-    } finally {
-      this.applying.set(false);
-    }
-  }
 
   async importCsv(ev: Event) {
     const input = ev.target as HTMLInputElement;

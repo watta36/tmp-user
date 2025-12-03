@@ -36,6 +36,24 @@ npm run build → dist/tmp-user/browser
 - Endpoint รองรับ `GET ?versionOnly=true` สำหรับตรวจสอบเลขเวอร์ชัน ใช้กับการ polling ของฝั่ง storefront.
 
 ### Tips for "bad auth" / Atlas authentication errors
-- ตรวจสอบให้แน่ใจว่า `MONGODB_URI` มี user/password ที่ URL encode แล้ว (เช่น `@` → `%40`).
-- ถ้า user ถูกสร้างไว้ใน database อื่น (เช่น `ecommerce`) ให้ตั้ง `MONGODB_AUTH_SOURCE` เป็นชื่อฐานนั้น หรือเพิ่ม `authSource` ลงใน connection string.
-- แอปจะ log authSource ที่ถูกใช้ (จาก env หรือ query string) เพื่อช่วย debug เมื่อเจอ error รหัส 8000 จาก Atlas.
+1) **ตั้งค่า URI ให้ชัดเจน**
+
+```env
+# ตัวอย่างที่แนะนำ (กำหนด authSource=admin ชัดๆ แม้จะเป็น SRV URI)
+MONGODB_URI=mongodb+srv://<username>:<encoded-password>@<cluster>.mongodb.net/ecommerce?authSource=admin
+MONGODB_DB=ecommerce
+# ถ้าต้องใช้ฐานอื่นเป็น auth database ให้ตั้ง MONGODB_AUTH_SOURCE แทน
+```
+
+- รหัสผ่านที่มีอักขระพิเศษ (`@`, `/`, `&`, ... ) ต้อง URL encode ก่อน (ใช้ `encodeURIComponent`).
+- ถ้า user ถูกสร้างไว้ใน database อื่น (เช่น `ecommerce`) ให้ตั้ง `MONGODB_AUTH_SOURCE` เป็นชื่อนั้นหรือเพิ่ม `authSource=<ชื่อฐาน>` ลงใน URI.
+
+2) **ตรวจสอบสิทธิ์บน Atlas**
+- User ควรมี role อย่างน้อย `readWrite` บนฐานที่ใช้ (หรือ `readWriteAnyDatabase`).
+- อย่าลืมเปิด IP ใน Network Access (เช่น `0.0.0.0/0` ชั่วคราวตอน dev).
+
+3) **ทดสอบเชื่อมต่อใน local**
+- รัน `node api/test-mongo.cjs` พร้อมตั้ง `MONGODB_URI`/`MONGODB_DB` เพื่อตรวจสอบว่าการ auth ถูกต้องก่อน deploy.
+
+4) **ตั้ง Environment Variables บน Vercel ให้ครบ**
+- เพิ่ม `MONGODB_URI` และ `MONGODB_DB` (และ `MONGODB_AUTH_SOURCE` ถ้าจำเป็น) ใน Production/Preview แล้ว redeploy อีกครั้ง.

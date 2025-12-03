@@ -170,6 +170,7 @@ export class ProductService implements OnDestroy {
         products: state.products ?? [],
         categories: state.categories ?? [],
         version: state.version,
+        theme: state.theme,
       });
     } catch (err) {
       console.warn('โหลดข้อมูลจากฐานไม่สำเร็จ', err);

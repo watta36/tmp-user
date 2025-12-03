@@ -36,7 +36,7 @@ async function getCategories(): Promise<string[] | null> {
 
 async function saveCategories(list: string[]) {
   const db = await getDb();
-  await db.collection<{ _id: string; value: unknown }>(META_COLLECTION).updateOne(
+  await db.collection<{ _id: string; value: unknown }>(META_COLLECTION).findOneAndUpdate(
     { _id: CATEGORY_KEY },
     { $set: { value: normalizeCategories(list) } },
     { upsert: true },

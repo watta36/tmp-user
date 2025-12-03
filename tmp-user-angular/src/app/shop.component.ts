@@ -64,8 +64,7 @@ import { ProductService, Product } from './product.service';
               <p class="muted product-desc">{{ p.description || 'พร้อมจัดส่งทันที สอบถามรายละเอียดเพิ่มเติมได้ทาง LINE' }}</p>
             </div>
             <div class="price-block">
-              <div class="price">{{ p.price | number:'1.0-0' }} ฿</div>
-              <div class="unit muted">/ {{ p.unit }}</div>
+              <div class="unit muted">{{ p.price | number:'1.0-0' }} ฿ / {{ p.unit }}</div>
             </div>
           </div>
           <div class="meta-row">
@@ -125,8 +124,7 @@ import { ProductService, Product } from './product.service';
           <p class="muted">{{ dp.description || 'รายละเอียดสินค้า' }}</p>
         </div>
         <div class="price-block">
-          <div class="price">{{ dp.price | number:'1.0-0' }} ฿</div>
-          <div class="unit muted">/ {{ dp.unit }}</div>
+          <div class="unit muted">{{ dp.price | number:'1.0-0' }} ฿ / {{ dp.unit }}</div>
         </div>
       </div>
     </div>

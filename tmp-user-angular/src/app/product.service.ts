@@ -136,15 +136,31 @@ export class ProductService implements OnDestroy {
 
   async importFromCsv(file: File) {
     const text = await file.text();
-    const result = await firstValueFrom(this.kvStore.importCsv(text));
-    const normalizedProducts = this.normalizeList(result.products || []);
-    this.products.set(normalizedProducts);
-    const categories = result.categories?.length
-      ? this.normalizeCategories(result.categories)
-      : this.normalizeCategories(normalizedProducts.map((p) => p.category));
-    this.categoryOptions.set(categories);
-    this.markDirty();
-    return { imported: normalizedProducts.length, skipped: 0 };
+    const { products, skipped } = this.parseCsvProducts(text);
+    if (!products.length) throw new Error('ไม่พบสินค้าในไฟล์');
+
+    const normalizedProducts = this.normalizeList(products);
+    const categories = this.normalizeCategories(normalizedProducts.map((p) => p.category));
+    const chunkSize = 20;
+    let latestVersion = this.serverVersion();
+
+    for (let i = 0; i < normalizedProducts.length; i += chunkSize) {
+      const chunk = normalizedProducts.slice(i, i + chunkSize);
+      const res = await firstValueFrom(this.kvStore.importChunk(chunk, {
+        reset: i === 0,
+        categories,
+        theme: this.themeChoice(),
+      }));
+      if (res?.version) latestVersion = res.version;
+    }
+
+    this.applyStateFromServer({
+      products: normalizedProducts,
+      categories,
+      version: latestVersion,
+      theme: this.themeChoice(),
+    });
+    return { imported: normalizedProducts.length, skipped };
   }
 
   async refreshFromServer() {
@@ -301,6 +317,88 @@ export class ProductService implements OnDestroy {
       return '"' + raw.replace(/"/g, '""') + '"';
     }
     return raw;
+  }
+
+  private parseCsvProducts(csv: string): { products: Product[]; skipped: number } {
+    const rows = this.splitCsv(csv);
+    if (!rows.length) return { products: [], skipped: 0 };
+
+    const headers = rows[0].map((h) => h.trim());
+    const seen = new Set<number>();
+    const products: Product[] = [];
+    let skipped = 0;
+
+    rows.slice(1).forEach((cells, idx) => {
+      const record = this.cellsToRecord(headers, cells);
+      const product = this.normalizeCsvProduct(record, idx + 1);
+      if (!product || seen.has(product.id)) { skipped += 1; return; }
+      seen.add(product.id);
+      products.push(product);
+    });
+
+    return { products, skipped };
+  }
+
+  private normalizeCsvProduct(record: Record<string, string>, fallbackId: number): Product | null {
+    const id = this.toNumber(record.id, fallbackId);
+    const name = (record.name ?? '').toString().trim();
+    const unit = (record.unit ?? '').toString().trim();
+    const category = (record.category ?? '').toString().trim();
+    const price = this.toNumber(record.price, 0);
+    if (!name || !unit || !category || !Number.isFinite(id) || !Number.isFinite(price)) return null;
+
+    const sku = (record.sku ?? '').toString().trim();
+    const description = (record.description ?? '').toString();
+    const slug = this.slugify(((record.slug ?? name) || '').toString());
+    const images = this.parseImageField(record.images ?? record.image);
+
+    return { id, name, price, unit, category, sku, description, slug, image: images[0] || '', images };
+  }
+
+  private splitCsv(text: string): string[][] {
+    const rows: string[][] = [];
+    let current = '';
+    let row: string[] = [];
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (inQuotes) {
+        if (ch === '"') {
+          if (text[i + 1] === '"') { current += '"'; i++; }
+          else { inQuotes = false; }
+        } else current += ch;
+      } else {
+        if (ch === '"') inQuotes = true;
+        else if (ch === ',') { row.push(current); current = ''; }
+        else if (ch === '\n') { row.push(current); rows.push(row); row = []; current = ''; }
+        else if (ch === '\r') { /* ignore */ }
+        else current += ch;
+      }
+    }
+    if (current || row.length) { row.push(current); rows.push(row); }
+    return rows.filter((r) => r.some((cell) => cell.trim() !== ''));
+  }
+
+  private cellsToRecord(headers: string[], cells: string[]): Record<string, string> {
+    const rec: Record<string, string> = {};
+    headers.forEach((h, idx) => { rec[h || `col_${idx}`] = cells[idx] ?? ''; });
+    return rec;
+  }
+
+  private parseImageField(value: unknown): string[] {
+    if (Array.isArray(value)) {
+      return Array.from(new Set(value.map((v) => v?.toString().trim()).filter(Boolean)));
+    }
+    if (typeof value === 'string') {
+      const parts = value.split(/\s*\|\s*|,\s*/).map((v) => v.trim()).filter(Boolean);
+      return Array.from(new Set(parts));
+    }
+    return [];
+  }
+
+  private toNumber(value: unknown, fallback: number): number {
+    const num = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(num) ? num : fallback;
   }
 
   private slugify(s: string) {

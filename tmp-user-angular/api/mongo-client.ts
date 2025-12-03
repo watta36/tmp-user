@@ -54,6 +54,9 @@ function isClientOpen(candidate: MongoClient | null): candidate is MongoClient {
 }
 
 async function getClient(): Promise<MongoClient> {
+  console.log('[DEBUG] MONGODB_URI =', process.env.MONGODB_URI);
+  console.log('[DEBUG] AUTH_SOURCE =', resolvedAuthSource);
+  console.log('[DEBUG] DB_NAME =', dbName);
   if (!uri) throw new Error('Missing MONGODB_URI environment variable');
   if (isClientOpen(client)) return client;
   const options: MongoClientOptions = resolvedAuthSource ? { authSource: resolvedAuthSource } : {};

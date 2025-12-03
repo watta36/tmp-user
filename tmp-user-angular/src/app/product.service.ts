@@ -209,13 +209,19 @@ export class ProductService implements OnDestroy {
   }
 
   private async pushSnapshotToBackend(state: { products: Product[]; categories: string[]; theme: string }) {
+    const snapshot = this.lastSnapshot;
+    const diff = this.buildDiff(snapshot, state);
+    if (!diff.upserts.length && !diff.deletedIds.length && !diff.categoriesChanged && !diff.themeChanged) return;
+
     try {
-      const res = await firstValueFrom(this.kvStore.applyChanges(state.products, state.categories, state.theme));
+      const res = await firstValueFrom(
+        this.kvStore.patchChanges(diff.upserts, diff.deletedIds, state.categories, state.theme)
+      );
       const version = res?.version ?? this.serverVersion() + 1;
       this.serverVersion.set(version);
       this.lastSnapshot = {
         products: [...state.products],
-        categories: [...state.categories],
+        categories: [...(res.categories || state.categories)],
         theme: state.theme,
         version,
       };
@@ -223,6 +229,54 @@ export class ProductService implements OnDestroy {
       console.error('บันทึกข้อมูลไปยัง Edge Config/KV ไม่สำเร็จ', err);
       throw err;
     }
+  }
+
+  private buildDiff(snapshot: KvState | null, state: { products: Product[]; categories: string[]; theme: string }) {
+    if (!snapshot) {
+      return {
+        upserts: state.products,
+        deletedIds: [] as number[],
+        categoriesChanged: true,
+        themeChanged: true,
+      };
+    }
+
+    const prevById = new Map(snapshot.products.map((p) => [p.id, p]));
+    const currentIds = new Set(state.products.map((p) => p.id));
+
+    const upserts = state.products.filter((p) => {
+      const prev = prevById.get(p.id);
+      if (!prev) return true;
+      return this.hasProductChanged(prev, p);
+    });
+
+    const deletedIds = snapshot.products.filter((p) => !currentIds.has(p.id)).map((p) => p.id);
+
+    return {
+      upserts,
+      deletedIds,
+      categoriesChanged: !this.areArraysEqual(snapshot.categories, state.categories),
+      themeChanged: (snapshot.theme || DEFAULT_THEME) !== state.theme,
+    };
+  }
+
+  private hasProductChanged(prev: Product, next: Product): boolean {
+    const fields: (keyof Product)[] = ['name', 'price', 'unit', 'category', 'sku', 'description', 'slug', 'image'];
+    for (const key of fields) {
+      if ((prev as any)[key] !== (next as any)[key]) return true;
+    }
+    const prevImages = (prev.images || []).join('|');
+    const nextImages = (next.images || []).join('|');
+    if (prevImages !== nextImages) return true;
+    return false;
+  }
+
+  private areArraysEqual(a: string[], b: string[]): boolean {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (a[i] !== b[i]) return false;
+    }
+    return true;
   }
 
   private startVersionPolling() {

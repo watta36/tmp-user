@@ -2,7 +2,8 @@ import { MongoClient, MongoServerError, type Collection, type Db, type MongoClie
 import type { ProductDocument } from './product-schema.js';
 
 const uri = resolveMongoUri();
-const dbName = process.env.MONGODB_DB || 'ecommerce';
+const dbNameFromUri = uri ? extractDbName(uri) : undefined;
+const dbName = process.env.MONGODB_DB || dbNameFromUri || 'ecommerce';
 const collectionName = process.env.MONGODB_COLLECTION || 'products';
 const authSource = process.env.MONGODB_AUTH_SOURCE;
 const authSourceFromUri = uri ? extractAuthSource(uri) : undefined;
@@ -30,6 +31,16 @@ function extractAuthSource(rawUri: string): string | undefined {
     const params = new URLSearchParams(rawUri.slice(queryIndex + 1));
     const found = params.get('authSource') ?? params.get('authsource');
     return found?.trim() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function extractDbName(rawUri: string): string | undefined {
+  try {
+    const { pathname } = new URL(rawUri);
+    const trimmed = pathname.replace(/^\/+/, '').trim();
+    return trimmed || undefined;
   } catch {
     return undefined;
   }

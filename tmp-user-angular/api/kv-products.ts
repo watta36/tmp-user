@@ -14,9 +14,10 @@ function parseBody(body: unknown): Partial<{
   upserts: ProductPayload[];
   deleteIds: number[];
   categories: string[];
-  action?: 'apply' | 'preview' | 'patch';
+  action?: 'apply' | 'preview' | 'patch' | 'importChunk';
   csv?: string;
   theme?: string;
+  reset?: boolean;
 }> {
   if (typeof body === 'string') {
     try { return JSON.parse(body); } catch { return {}; }
@@ -26,9 +27,10 @@ function parseBody(body: unknown): Partial<{
     upserts: ProductPayload[];
     deleteIds: number[];
     categories: string[];
-    action?: 'apply' | 'preview' | 'patch';
+    action?: 'apply' | 'preview' | 'patch' | 'importChunk';
     csv?: string;
     theme?: string;
+    reset?: boolean;
   }>;
   return {};
 }
@@ -177,6 +179,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const incomingList = Array.isArray(payload.products) ? payload.products : [];
     const normalized = fromCsv.length ? fromCsv : normalizeProducts(incomingList);
     const incomingTheme = normalizeTheme(payload.theme);
+
+    if (payload.action === 'importChunk') {
+      const chunk = normalizeProducts(incomingList);
+      const collection = await getProductsCollection();
+      if (payload.reset) {
+        await collection.deleteMany({});
+      }
+      if (!chunk.length) {
+        const categories = payload.categories?.length
+          ? normalizeCategories(payload.categories)
+          : await collectCategoriesFromDb(collection);
+        await saveCategories(categories);
+        await saveTheme(incomingTheme);
+        const version = await bumpVersion();
+        return res.status(200).json({ ok: true, imported: 0, categories, theme: incomingTheme, version });
+      }
+      const result = await applyPatch(chunk, [], payload.categories, incomingTheme);
+      return res.status(200).json({ ok: true, ...result, imported: chunk.length });
+    }
 
     if (payload.action === 'preview') {
       const categories = collectCategories(normalized, payload.categories);

@@ -39,10 +39,19 @@ export class KvStoreService {
     });
   }
 
-  importCsv(csv: string): Observable<{ ok: boolean; products: Product[]; categories: string[]; version?: number }> {
-    return this.http.post<{ ok: boolean; products: Product[]; categories: string[]; version?: number }>(`${this.baseUrl}/api/kv-products`, {
-      csv,
-      action: 'preview',
-    });
+  importChunk(
+    products: Product[],
+    options: { reset?: boolean; categories: string[]; theme: string },
+  ): Observable<{ ok: boolean; imported: number; version?: number; categories?: string[]; theme?: string }> {
+    return this.http.post<{ ok: boolean; imported: number; version?: number; categories?: string[]; theme?: string }>(
+      `${this.baseUrl}/api/kv-products`,
+      {
+        action: 'importChunk',
+        products,
+        reset: options.reset,
+        categories: options.categories,
+        theme: options.theme,
+      }
+    );
   }
 }

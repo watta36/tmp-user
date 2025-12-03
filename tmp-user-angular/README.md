@@ -22,20 +22,13 @@ Admin: http://localhost:4200/manage-987xyz  (เปลี่ยน path ใน c
 ## Build / Deploy (Vercel/Netlify/Cloudflare)
 npm run build → dist/tmp-user/browser
 
-## Vercel KV / Edge Config data flow
-- API routes in `/api/kv-products.ts` และ `/api/kv-test.ts` รองรับ 3 โหมด:
-  1) **Edge Config** – ตั้ง `EDGE_CONFIG_ID` และ `EDGE_CONFIG_TOKEN` → จะอ่าน/เขียน `products`, `categories`, `products_version` ผ่าน REST (`https://edge-config.vercel.com/<id>/items`). ไม่ต้องใช้ connection string; เอาแค่ ID และ token จากลิงก์ Edge Config (เช่น `https://edge-config.vercel.com/<EDGE_CONFIG_ID>/items?token=<EDGE_CONFIG_TOKEN>`).
-  2) **Vercel KV** – ถ้าไม่ได้ตั้ง Edge Config จะเรียก REST API (`KV_REST_API_URL` + `KV_REST_API_TOKEN`) ตรง ๆ ไม่พึ่งแพ็กเกจ `@vercel/kv` (ไม่ใช้ connection string ของ KV UI; ใช้ REST URL/Token ที่ Vercel ให้มาพร้อมกัน).
-  3) **ไฟล์โลคัล** – ถ้าไม่ตั้งค่าอะไรเลยจะ fallback ไปที่ `api/local-kv.json`.
-- ฝั่งแอดมินเรียก `KvStoreService` (`src/app/kv-store.service.ts`) เพื่อดึง/บันทึกสินค้าและหมวดหมู่ไปยัง API: `loadState` = GET, `saveState` = POST, `applyChanges` = POST `{ action: 'apply' }`, และ `loadVersion` = GET `?versionOnly=true` สำหรับเช็กเวอร์ชัน.
-- ปุ่มหน้า Admin (`src/app/admin/products-list/products-list.component.html`) ที่มีผลกับฐานข้อมูล (Edge Config / KV / local ตามโหมด):
-  - "บันทึก", "เพิ่มสินค้า", "ลบ", "เพิ่ม/แก้ไข/ลบหมวดหมู่", "Reset ข้อมูลเริ่มต้น", "นำเข้า CSV", "ลบสินค้าทั้งหมด" เรียก `ProductService` ให้ส่ง `saveState` → อัปเดตข้อมูลพร้อมเพิ่มเลขเวอร์ชัน.
-  - "Apply" ส่ง snapshot ปัจจุบันไปอัปเดต Edge Config/KV พร้อมเพิ่ม version → หน้าร้านที่ polling อยู่จะดึงข้อมูลล่าสุดเสมอ.
-- "Apply" เรียก `applyChanges` → เพิ่ม version เพื่อบังคับให้หน้าร้านโหลดข้อมูลใหม่ (polling ทุก 10 วินาที).
-- "ยกเลิก" ใช้ `restoreLastSnapshot` → ดึงข้อมูลจาก backend/snapshot ล่าสุดโดยไม่เขียนฐาน.
-
-### ยิงทดสอบว่า backend ตอบกลับได้ไหม
-- ใช้ `curl http://localhost:3000/api/kv-test` เพื่อดู backend ที่กำลังใช้งาน (`edge-config`, `vercel-kv` หรือ `local-fallback`) พร้อมค่า counter ที่อ่านได้
-  - ถ้าไม่ได้ตั้ง env ของ Edge Config / KV จะยังตอบ 200 พร้อม message ว่าใช้ local-fallback เพื่อให้รู้ว่ายังไม่ได้ผูก backend จริง
-- ยิง POST เพื่อเช็กเขียน/อ่านเชื่อมต่อได้ เช่น `curl -X POST http://localhost:3000/api/kv-test -H 'content-type: application/json' -d '{"value":1}'`
-  - ถ้าเชื่อมต่อได้จะได้ `{ ok: true, backend: 'edge-config|vercel-kv', counter: <ค่าที่เพิ่งตั้ง> }`
+## MongoDB data flow
+- API route `/api/kv-products.ts` เชื่อม MongoDB โดยตรง (ไม่มี local fallback) ใช้ env:
+  - `MONGODB_URI` → connection string
+  - `MONGODB_DB` → `ecommerce`
+  - `MONGODB_COLLECTION` → `products`
+- ฝั่งแอดมิน (`KvStoreService` / `ProductService`):
+  - โหลดสินค้า/หมวดหมู่จากฐานด้วย `loadState` (GET `/api/kv-products`).
+  - บันทึก snapshot (เพิ่ม ลบ แก้ไข) ผ่าน `saveState` หรือ `applyChanges` ซึ่งจะเขียนลง collection และเพิ่มเลข version.
+  - การนำเข้าไฟล์ CSV ส่งไฟล์ขึ้น backend → backend เป็นคน parse และ `insertMany` ลง Mongo ก่อนตอบยอดที่นำเข้า จากนั้นแอปจะ refresh state จากฐานจริง.
+- Endpoint รองรับ `GET ?versionOnly=true` สำหรับตรวจสอบเลขเวอร์ชัน ใช้กับการ polling ของฝั่ง storefront.

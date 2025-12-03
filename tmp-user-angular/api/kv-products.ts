@@ -1,274 +1,86 @@
-// api/kv-products.ts
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { kv } from '@vercel/kv';
-import { promises as fs } from 'fs';
-import path from 'path';
+import type { VercelRequest, VercelResponse } from './vercel-types';
+import { getDb, getProductsCollection } from './mongo-client';
+import { normalizeProducts, parseCsvProducts, type ProductDocument, type ProductPayload } from './product-schema';
 
-export type KvProduct = {
-  id: number;
-  name: string;
-  price: number;
-  unit: string;
-  category: string;
-  sku?: string;
-  description?: string;
-  slug: string;
-  image?: string;
-  images?: string[];
-};
-
-type KvPayload = {
-  products: KvProduct[];
-  categories: string[];
-  action?: 'apply';
-};
-
-const PRODUCTS_KEY = 'products';
-const CATEGORIES_KEY = 'categories';
 const VERSION_KEY = 'products_version';
+const META_COLLECTION = 'metadata';
 
-// ใช้ tmp dir สำหรับ local fallback
-const LOCAL_FILE = path.join(process.env.TMPDIR ?? '/tmp', 'local-kv.json');
-
-// -------------------- helper: env --------------------
-
-const hasKvEnv = () =>
-  ['KV_REST_API_URL', 'KV_REST_API_TOKEN'].every((key) => !!process.env[key]);
-
-const hasEdgeConfigEnv = () =>
-  ['EDGE_CONFIG_ID', 'EDGE_CONFIG_TOKEN'].every((key) => !!process.env[key]);
-
-type EdgeConfigResponse<T> = {
-  items?: Record<string, T>;
-  item?: { key: string; value: T };
-};
-
-async function edgeConfigGet<T>(key: string): Promise<T | null> {
-  if (!hasEdgeConfigEnv()) return null;
-  const { EDGE_CONFIG_ID, EDGE_CONFIG_TOKEN } = process.env;
-  const res = await fetch(
-    `https://edge-config.vercel.com/${EDGE_CONFIG_ID}/item/${key}?token=${EDGE_CONFIG_TOKEN}`,
-  );
-  if (!res.ok) return null;
-  const data = (await res.json()) as EdgeConfigResponse<T>;
-  return data.item?.value ?? null;
-}
-
-async function edgeConfigSet(items: Record<string, unknown>): Promise<void> {
-  if (!hasEdgeConfigEnv()) return;
-  const { EDGE_CONFIG_ID, EDGE_CONFIG_TOKEN } = process.env;
-  await fetch(
-    `https://edge-config.vercel.com/${EDGE_CONFIG_ID}/items?token=${EDGE_CONFIG_TOKEN}`,
-    {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        items: Object.entries(items).map(([key, value]) => ({
-          operation: 'upsert',
-          key,
-          value,
-        })),
-      }),
-    },
-  );
-}
-
-// -------------------- helper: KV version --------------------
-
-async function getVersion(): Promise<number> {
-  const version = await kv.get<number>(VERSION_KEY);
-  return typeof version === 'number' ? version : 0;
-}
-
-async function bumpVersion(): Promise<number> {
-  const current = await getVersion();
-  const next = await kv.incr(VERSION_KEY);
-  return typeof next === 'number' ? next : current + 1;
-}
-
-// -------------------- local fallback --------------------
-
-type LocalState = { products: KvProduct[]; categories: string[]; version: number };
-
-let localStateMemory: LocalState = { products: [], categories: [], version: 0 };
-
-async function readLocalState(): Promise<LocalState> {
-  try {
-    const content = await fs.readFile(LOCAL_FILE, 'utf8');
-    const parsed = JSON.parse(content) as Partial<LocalState>;
-    const state: LocalState = {
-      products: Array.isArray(parsed.products) ? parsed.products : [],
-      categories: Array.isArray(parsed.categories) ? parsed.categories : [],
-      version: typeof parsed.version === 'number' ? parsed.version : 0,
-    };
-    localStateMemory = state;
-    return state;
-  } catch {
-    return localStateMemory;
-  }
-}
-
-async function writeLocalState(data: LocalState) {
-  localStateMemory = data;
-  try {
-    await fs.mkdir(path.dirname(LOCAL_FILE), { recursive: true });
-    await fs.writeFile(LOCAL_FILE, JSON.stringify(data, null, 2), 'utf8');
-  } catch {
-    // ignore write error
-  }
-}
-
-// -------------------- parse body --------------------
-
-function parseBody(body: unknown): Partial<KvPayload> {
+function parseBody(body: unknown): Partial<{ products: ProductPayload[]; categories: string[]; action?: 'apply'; csv?: string; }> {
   if (typeof body === 'string') {
-    try {
-      return JSON.parse(body);
-    } catch {
-      return {};
-    }
+    try { return JSON.parse(body); } catch { return {}; }
   }
-  if (body && typeof body === 'object') return body as Partial<KvPayload>;
+  if (body && typeof body === 'object') return body as Partial<{ products: ProductPayload[]; categories: string[]; action?: 'apply'; csv?: string; }>;
   return {};
 }
 
-// -------------------- handler --------------------
+function collectCategories(products: ProductDocument[], override?: string[]): string[] {
+  if (Array.isArray(override) && override.length) {
+    return Array.from(new Set(override.map((c) => c.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'th'));
+  }
+  return Array.from(new Set(products.map((p) => p.category.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'th'));
+}
+
+async function getVersion() {
+  const db = await getDb();
+  const meta = await db.collection<{ _id: string; value: number }>(META_COLLECTION).findOne({ _id: VERSION_KEY });
+  return typeof meta?.value === 'number' ? meta.value : 0;
+}
+
+async function bumpVersion() {
+  const db = await getDb();
+  const result = await db.collection<{ _id: string; value: number }>(META_COLLECTION).findOneAndUpdate(
+    { _id: VERSION_KEY },
+    { $inc: { value: 1 } },
+    { upsert: true, returnDocument: 'after' },
+  );
+  return result.value?.value ?? 1;
+}
+
+async function replaceProducts(products: ProductDocument[], categories?: string[]) {
+  const collection = await getProductsCollection();
+  const now = new Date();
+  const docs = products.map((p) => ({ ...p, createdAt: p.createdAt ?? now, updatedAt: now }));
+  await collection.deleteMany({});
+  if (docs.length) await collection.insertMany(docs);
+  const version = await bumpVersion();
+  const categoryList = collectCategories(products, categories);
+  return { version, categories: categoryList };
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    const useEdgeConfig = hasEdgeConfigEnv();
-    const useKv = !useEdgeConfig && hasKvEnv();
-
-    // ---------- GET versionOnly ----------
     if (req.method === 'GET' && req.query.versionOnly) {
-      let version = 0;
-      if (useEdgeConfig) {
-        version = (await edgeConfigGet<number>(VERSION_KEY)) ?? 0;
-      } else if (useKv) {
-        version = await getVersion();
-      } else {
-        version = (await readLocalState()).version;
-      }
+      const version = await getVersion();
       return res.status(200).json({ version });
     }
 
-    // ---------- GET products ----------
     if (req.method === 'GET') {
-      if (useEdgeConfig) {
-        const [products, categories, version] = await Promise.all([
-          edgeConfigGet<KvProduct[]>(PRODUCTS_KEY),
-          edgeConfigGet<string[]>(CATEGORIES_KEY),
-          edgeConfigGet<number>(VERSION_KEY),
-        ]);
-        return res.status(200).json({
-          products: products ?? [],
-          categories: categories ?? [],
-          version: version ?? 0,
-        });
-      }
-
-      if (useKv) {
-        const [products, categories, version] = await Promise.all([
-          kv.get<KvProduct[]>(PRODUCTS_KEY),
-          kv.get<string[]>(CATEGORIES_KEY),
-          getVersion(),
-        ]);
-        return res.status(200).json({
-          products: products ?? [],
-          categories: categories ?? [],
-          version,
-        });
-      }
-
-      const state = await readLocalState();
-      return res.status(200).json({
-        products: state.products,
-        categories: state.categories,
-        version: state.version,
-      });
+      const collection = await getProductsCollection();
+      const items = await collection.find({}).sort({ id: 1 }).toArray();
+      const products = items.map(({ _id, ...doc }) => ({ ...doc }));
+      const categories = collectCategories(products);
+      const version = await getVersion();
+      return res.status(200).json({ products, categories, version });
     }
 
-    // ---------- POST (import / apply) ----------
     if (req.method === 'POST') {
       const payload = parseBody(req.body);
-      const bodyProducts = Array.isArray(payload.products) ? payload.products : undefined;
-      const bodyCategories = Array.isArray(payload.categories) ? payload.categories : undefined;
+      const csvText = typeof payload.csv === 'string' ? payload.csv : undefined;
+      const fromCsv = csvText ? parseCsvProducts(csvText) : [];
+      const incomingList = Array.isArray(payload.products) ? payload.products : [];
+      const normalized = fromCsv.length ? fromCsv : normalizeProducts(incomingList);
 
-      // ----- mode: apply (updateบาง field) -----
-      if (payload.action === 'apply') {
-        if (useEdgeConfig) {
-          const current = (await edgeConfigGet<number>(VERSION_KEY)) ?? 0;
-          const next = current + 1;
-          const items: Record<string, unknown> = { [VERSION_KEY]: next };
-          if (bodyProducts) items[PRODUCTS_KEY] = bodyProducts;
-          if (bodyCategories) items[CATEGORIES_KEY] = bodyCategories;
-          await edgeConfigSet(items);
-          return res.status(200).json({ ok: true, version: next });
-        }
-
-        if (useKv) {
-          if (bodyProducts) await kv.set(PRODUCTS_KEY, bodyProducts);
-          if (bodyCategories) await kv.set(CATEGORIES_KEY, bodyCategories);
-          const version = await bumpVersion();
-          return res.status(200).json({ ok: true, version });
-        }
-
-        const current = await readLocalState();
-        const products = bodyProducts ?? current.products;
-        const categories = bodyCategories ?? current.categories;
-        const nextVersion = current.version + 1;
-        await writeLocalState({ products, categories, version: nextVersion });
-        return res.status(200).json({ ok: true, version: nextVersion });
+      if (!normalized.length) {
+        return res.status(400).json({ error: 'ไม่พบข้อมูลสินค้าที่นำเข้าได้' });
       }
 
-      // ----- mode: replace ทั้งก้อน -----
-      const products = bodyProducts ?? [];
-      const categories = bodyCategories ?? [];
-
-      if (useEdgeConfig) {
-        const currentVersion = (await edgeConfigGet<number>(VERSION_KEY)) ?? 0;
-        const nextVersion = currentVersion + 1;
-        await edgeConfigSet({
-          [PRODUCTS_KEY]: products,
-          [CATEGORIES_KEY]: categories,
-          [VERSION_KEY]: nextVersion,
-        });
-        return res.status(200).json({
-          ok: true,
-          products: products.length,
-          categories: categories.length,
-          version: nextVersion,
-        });
-      }
-
-      if (useKv) {
-        await Promise.all([
-          kv.set(PRODUCTS_KEY, products),
-          kv.set(CATEGORIES_KEY, categories),
-        ]);
-        const version = await bumpVersion();
-        return res.status(200).json({
-          ok: true,
-          products: products.length,
-          categories: categories.length,
-          version,
-        });
-      }
-
-      const current = await readLocalState();
-      const nextVersion = current.version + 1;
-      await writeLocalState({ products, categories, version: nextVersion });
-      return res.status(200).json({
-        ok: true,
-        products: products.length,
-        categories: categories.length,
-        version: nextVersion,
-      });
+      const result = await replaceProducts(normalized, payload.categories);
+      return res.status(200).json({ ok: true, products: normalized.length, categories: result.categories, version: result.version });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'Server error' });
+    console.error('kv-products error', err);
+    return res.status(500).json({ error: 'Server error', message: err instanceof Error ? err.message : String(err) });
   }
 }

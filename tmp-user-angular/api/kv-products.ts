@@ -57,7 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'GET') {
       const collection = await getProductsCollection();
       const items = await collection.find({}).sort({ id: 1 }).toArray();
-      const products = items.map(({ _id, ...doc }) => ({ ...doc }));
+      const products = items.map(({ _id, ...doc }: ProductDocument & { _id?: unknown }) => ({ ...doc }));
       const categories = collectCategories(products);
       const version = await getVersion();
       return res.status(200).json({ products, categories, version });

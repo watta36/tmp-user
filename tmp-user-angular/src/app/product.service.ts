@@ -22,6 +22,7 @@ export class ProductService implements OnDestroy {
   private serverVersion = signal<number>(0);
   private lastSnapshot: KvState | null = null;
   private versionPoller?: ReturnType<typeof setInterval>;
+  pendingChanges = signal(false);
 
   constructor(private kvStore: KvStoreService) {
     this.refreshFromServer();
@@ -34,7 +35,7 @@ export class ProductService implements OnDestroy {
   async addCategory(name: string) {
     const normalized = this.normalizeCategories([name, ...this.categoryOptions()]);
     this.categoryOptions.set(normalized);
-    await this.persistState();
+    this.pendingChanges.set(true);
   }
 
   async renameCategory(prevName: string, nextName: string) {
@@ -45,13 +46,13 @@ export class ProductService implements OnDestroy {
     this.products.set(
       this.products().map((p) => (p.category === prevName ? this.normalizeProduct({ ...p, category: newName }) : p))
     );
-    await this.persistState();
+    this.pendingChanges.set(true);
   }
 
   async removeCategory(name: string) {
     this.categoryOptions.set(this.categoryOptions().filter((c) => c !== name));
     this.products.set(this.products().map((p) => (p.category === name ? this.normalizeProduct({ ...p, category: '' }) : p)));
-    await this.persistState();
+    this.pendingChanges.set(true);
   }
 
   async add(p: Omit<Product, 'id'>) {
@@ -59,18 +60,18 @@ export class ProductService implements OnDestroy {
     const product = this.normalizeProduct({ id: nextId, ...p } as Product);
     this.products.set([product, ...this.products()]);
     this.ensureCategoryExists(product.category);
-    await this.persistState();
+    this.pendingChanges.set(true);
   }
 
   async update(id: number, patch: Partial<Product>) {
     this.products.set(this.products().map(p => p.id === id ? this.normalizeProduct({ ...p, ...patch, id: p.id }) : p));
     if (patch.category) this.ensureCategoryExists(patch.category);
-    await this.persistState();
+    this.pendingChanges.set(true);
   }
 
   async remove(id: number) {
     this.products.set(this.products().filter(p => p.id !== id));
-    await this.persistState();
+    this.pendingChanges.set(true);
   }
 
   async resetToSeed() {
@@ -80,7 +81,7 @@ export class ProductService implements OnDestroy {
   async clearAll() {
     this.products.set([]);
     this.categoryOptions.set([]);
-    await this.persistState();
+    this.pendingChanges.set(true);
   }
 
   exportToCsv(filename = 'products.csv') {
@@ -102,8 +103,14 @@ export class ProductService implements OnDestroy {
   async importFromCsv(file: File) {
     const text = await file.text();
     const result = await firstValueFrom(this.kvStore.importCsv(text));
-    await this.refreshFromServer();
-    return { imported: result?.products ?? 0, skipped: 0 };
+    const normalizedProducts = this.normalizeList(result.products || []);
+    this.products.set(normalizedProducts);
+    const categories = result.categories?.length
+      ? this.normalizeCategories(result.categories)
+      : this.normalizeCategories(normalizedProducts.map((p) => p.category));
+    this.categoryOptions.set(categories);
+    this.pendingChanges.set(true);
+    return { imported: normalizedProducts.length, skipped: 0 };
   }
 
   async refreshFromServer() {
@@ -134,6 +141,7 @@ export class ProductService implements OnDestroy {
 
   async applyLatest() {
     await this.pushSnapshotToBackend({ products: this.products(), categories: this.categoryOptions() });
+    this.pendingChanges.set(false);
   }
 
   ngOnDestroy(): void {
@@ -156,6 +164,7 @@ export class ProductService implements OnDestroy {
       categories: [...this.categoryOptions()],
       version,
     };
+    this.pendingChanges.set(false);
   }
 
   private async pushSnapshotToBackend(state: { products: Product[]; categories: string[] }) {
@@ -170,24 +179,7 @@ export class ProductService implements OnDestroy {
       };
     } catch (err) {
       console.error('บันทึกข้อมูลไปยัง Edge Config/KV ไม่สำเร็จ', err);
-    }
-  }
-
-  private async persistState(throwOnError = false) {
-    try {
-      const res = await firstValueFrom(this.kvStore.saveState(this.products(), this.categoryOptions()));
-      const version = res?.version ?? this.serverVersion() + 1;
-      this.serverVersion.set(version);
-      this.lastSnapshot = {
-        products: [...this.products()],
-        categories: [...this.categoryOptions()],
-        version,
-      };
-      return true;
-    } catch (err) {
-      console.error('ซิงค์ข้อมูลไป KV ไม่สำเร็จ', err);
-      if (throwOnError) throw err;
-      return false;
+      throw err;
     }
   }
 
@@ -198,6 +190,7 @@ export class ProductService implements OnDestroy {
         const res = await firstValueFrom(this.kvStore.loadVersion());
         const version = res?.version ?? 0;
         if (version > this.serverVersion()) {
+          if (this.pendingChanges()) return;
           await this.refreshFromServer();
         }
       } catch (err) {

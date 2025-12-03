@@ -12,6 +12,44 @@
 .admin-toolbar {
   flex-wrap: wrap;
   gap: 8px;
+  align-items: center;
+}
+
+.toolbar-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 12.8px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.toolbar-status .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.12);
+}
+
+.toolbar-status--dirty {
+  background: #fff7ed;
+  border-color: #fdba74;
+  color: #9a3412;
+}
+
+.toolbar-status--dirty .dot {
+  background: #f97316;
+  box-shadow: 0 0 0 6px rgba(249, 115, 22, 0.14);
+}
+
+.toolbar-status .label {
+  white-space: nowrap;
 }
 
 .file-btn {
@@ -258,6 +296,24 @@
   color: #94a3b8;
   line-height: 1.35;
   text-align: center;
+}
+
+.action-row--balanced {
+  gap: 12px;
+  justify-content: flex-start;
+}
+
+.action-row--balanced .btn {
+  min-width: 148px;
+  padding: 11px 16px;
+  border-radius: 14px;
+  box-shadow: 0 10px 28px -22px rgba(15, 23, 42, 0.35);
+}
+
+.action-row--balanced .btn.ghost {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #0f172a;
 }
 
 /* ย่อปุ่มลงอีกนิดในจอไม่กว้างมาก เพื่อกันล้น */

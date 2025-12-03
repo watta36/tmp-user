@@ -23,10 +23,6 @@ export class KvStoreService {
     return this.http.get<{ version: number }>(`${this.baseUrl}/api/kv-products`, { params: { versionOnly: true } });
   }
 
-  saveState(products: Product[], categories: string[]): Observable<{ ok: boolean; version?: number }> {
-    return this.http.post<{ ok: boolean; version?: number }>(`${this.baseUrl}/api/kv-products`, { products, categories });
-  }
-
   applyChanges(products: Product[], categories: string[]): Observable<{ ok: boolean; version?: number }> {
     return this.http.post<{ ok: boolean; version?: number }>(`${this.baseUrl}/api/kv-products`, {
       action: 'apply',
@@ -35,7 +31,10 @@ export class KvStoreService {
     });
   }
 
-  importCsv(csv: string): Observable<{ ok: boolean; products: number; categories: string[]; version?: number }> {
-    return this.http.post<{ ok: boolean; products: number; categories: string[]; version?: number }>(`${this.baseUrl}/api/kv-products`, { csv });
+  importCsv(csv: string): Observable<{ ok: boolean; products: Product[]; categories: string[]; version?: number }> {
+    return this.http.post<{ ok: boolean; products: Product[]; categories: string[]; version?: number }>(`${this.baseUrl}/api/kv-products`, {
+      csv,
+      action: 'preview',
+    });
   }
 }

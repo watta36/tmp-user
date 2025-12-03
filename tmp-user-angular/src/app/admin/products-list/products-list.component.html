@@ -49,13 +49,18 @@
           <button class="btn" (click)="logout()">Logout</button>
           <button class="btn danger" (click)="reset()">Reset ข้อมูลเริ่มต้น</button>
           <button class="btn" (click)="exportCsv()">Export เป็น Excel/CSV</button>
-          <button class="btn success" type="button" (click)="applyChanges()" [disabled]="applying()">Apply</button>
+          <button class="btn success" type="button" (click)="applyChanges()" [disabled]="applying() || !ps.pendingChanges()">Apply</button>
           <label class="btn ghost file-btn">
             <span *ngIf="!importing()">Import Excel/CSV</span>
             <span *ngIf="importing()">กำลังนำเข้า...</span>
             <input type="file" accept=".csv,text/csv" (change)="importCsv($event)" [disabled]="importing()">
           </label>
           <button class="btn danger ghost" (click)="clearAllProducts()">ลบสินค้าทั้งหมด</button>
+          <div class="toolbar-status" [class.toolbar-status--dirty]="ps.pendingChanges()">
+            <span class="dot"></span>
+            <span class="label" *ngIf="ps.pendingChanges(); else cleanState">มีการแก้ไขรอ Apply</span>
+            <ng-template #cleanState><span class="label">ข้อมูลเผยแพร่ล่าสุดแล้ว</span></ng-template>
+          </div>
         </div>
         <p class="small muted">* ส่งออกเป็นไฟล์ CSV (รองรับการเปิดใน Excel) และนำเข้าด้วยไฟล์เดียวกัน รายการเดิมจะถูกแทนที่ให้เหมือนในไฟล์</p>
 
@@ -87,9 +92,9 @@
             <button class="btn tiny" type="button" (click)="removeDraftImage(i)">ลบ</button>
           </div>
         </div>
-        <div class="action-row">
-          <button class="btn primary" (click)="add()">เพิ่มสินค้า</button>
-          <button class="btn" (click)="clearDraft()">ล้างฟอร์ม</button>
+        <div class="action-row action-row--balanced">
+          <button class="btn primary" type="button" (click)="add()">เพิ่มสินค้า</button>
+          <button class="btn ghost" type="button" (click)="clearDraft()">ล้างฟอร์ม</button>
         </div>
       </div>
 
@@ -99,7 +104,7 @@
             <p class="eyebrow">รายการสินค้า</p>
             <h3 style="margin:4px 0">แก้ไขได้ทันที</h3>
           </div>
-          <div class="pill pill-ghost">แก้ไขแล้วจะเซฟทันที</div>
+          <div class="pill pill-ghost">แก้ไขแล้วจะรอจนกด Apply</div>
         </div>
         <div class="table-wrap admin-table-wrap">
           <table class="table admin-table">

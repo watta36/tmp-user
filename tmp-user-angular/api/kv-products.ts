@@ -3,27 +3,44 @@ import { getDb, getProductsCollection } from './mongo-client.js';
 import { normalizeProducts, parseCsvProducts, type ProductDocument, type ProductPayload } from './product-schema.js';
 
 const VERSION_KEY = 'products_version';
+const CATEGORY_KEY = 'products_categories';
 const META_COLLECTION = 'metadata';
 
-function parseBody(body: unknown): Partial<{ products: ProductPayload[]; categories: string[]; action?: 'apply'; csv?: string; }> {
+function parseBody(body: unknown): Partial<{ products: ProductPayload[]; categories: string[]; action?: 'apply' | 'preview'; csv?: string; }> {
   if (typeof body === 'string') {
     try { return JSON.parse(body); } catch { return {}; }
   }
-  if (body && typeof body === 'object') return body as Partial<{ products: ProductPayload[]; categories: string[]; action?: 'apply'; csv?: string; }>;
+  if (body && typeof body === 'object') return body as Partial<{ products: ProductPayload[]; categories: string[]; action?: 'apply' | 'preview'; csv?: string; }>;
   return {};
 }
 
 function collectCategories(products: ProductDocument[], override?: string[]): string[] {
   if (Array.isArray(override) && override.length) {
-    return Array.from(new Set(override.map((c) => c.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'th'));
+    return normalizeCategories(override);
   }
-  return Array.from(new Set(products.map((p) => p.category.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'th'));
+  return normalizeCategories(products.map((p) => p.category));
 }
 
 async function getVersion() {
   const db = await getDb();
   const meta = await db.collection<{ _id: string; value: number }>(META_COLLECTION).findOne({ _id: VERSION_KEY });
   return typeof meta?.value === 'number' ? meta.value : 0;
+}
+
+async function getCategories(): Promise<string[] | null> {
+  const db = await getDb();
+  const meta = await db.collection<{ _id: string; value: string[] }>(META_COLLECTION).findOne({ _id: CATEGORY_KEY });
+  if (Array.isArray(meta?.value)) return normalizeCategories(meta.value);
+  return null;
+}
+
+async function saveCategories(list: string[]) {
+  const db = await getDb();
+  await db.collection<{ _id: string; value: unknown }>(META_COLLECTION).updateOne(
+    { _id: CATEGORY_KEY },
+    { $set: { value: normalizeCategories(list) } },
+    { upsert: true },
+  );
 }
 
 async function bumpVersion() {
@@ -42,9 +59,14 @@ async function replaceProducts(products: ProductDocument[], categories?: string[
   const docs = products.map((p) => ({ ...p, createdAt: p.createdAt ?? now, updatedAt: now }));
   await collection.deleteMany({});
   if (docs.length) await collection.insertMany(docs);
-  const version = await bumpVersion();
   const categoryList = collectCategories(products, categories);
+  await saveCategories(categoryList);
+  const version = await bumpVersion();
   return { version, categories: categoryList };
+}
+
+function normalizeCategories(list: string[]): string[] {
+  return Array.from(new Set(list.map((c) => c.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'th'));
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -56,10 +78,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method === 'GET') {
       const collection = await getProductsCollection();
-      const items = await collection.find({}).sort({ id: 1 }).toArray();
+      const [items, storedCategories, version] = await Promise.all([
+        collection.find({}).sort({ id: 1 }).toArray(),
+        getCategories(),
+        getVersion(),
+      ]);
       const products = items.map(({ _id, ...doc }: ProductDocument & { _id?: unknown }) => ({ ...doc }));
-      const categories = collectCategories(products);
-      const version = await getVersion();
+      const derivedCategories = collectCategories(products);
+      const categories = storedCategories?.length ? storedCategories : derivedCategories;
       return res.status(200).json({ products, categories, version });
     }
 
@@ -70,8 +96,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const incomingList = Array.isArray(payload.products) ? payload.products : [];
       const normalized = fromCsv.length ? fromCsv : normalizeProducts(incomingList);
 
-      if (!normalized.length) {
-        return res.status(400).json({ error: 'ไม่พบข้อมูลสินค้าที่นำเข้าได้' });
+      if (payload.action === 'preview') {
+        const categories = collectCategories(normalized, payload.categories);
+        return res.status(200).json({ ok: true, products: normalized, categories });
       }
 
       const result = await replaceProducts(normalized, payload.categories);

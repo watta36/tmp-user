@@ -217,6 +217,11 @@ export class AdminComponent {
   track = (_: number, p: Product) => p.id;
   trackCat = (_: number, name: string) => name;
 
+  getCurrentThemeName() {
+    const theme = this.themes.find((t) => t.id === this.currentTheme());
+    return theme?.name ?? '';
+  }
+
   slugify(s: string) {
     return s
       .toLowerCase()

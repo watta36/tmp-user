@@ -7,9 +7,19 @@ const collectionName = process.env.MONGODB_COLLECTION || 'products';
 
 let client: MongoClient | null = null;
 
+type TopologyState = { isClosed?: () => boolean; s?: { state?: string } };
+
+function isClientOpen(candidate: MongoClient | null): candidate is MongoClient {
+  if (!candidate) return false;
+  const topology = (candidate as MongoClient & { topology?: TopologyState }).topology;
+  if (topology?.isClosed?.()) return false;
+  if (topology?.s?.state === 'closed') return false;
+  return true;
+}
+
 async function getClient(): Promise<MongoClient> {
   if (!uri) throw new Error('Missing MONGODB_URI environment variable');
-  if (client) return client;
+  if (isClientOpen(client)) return client;
   client = new MongoClient(uri);
   await client.connect();
   return client;

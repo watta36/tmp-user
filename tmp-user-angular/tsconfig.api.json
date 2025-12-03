@@ -4,6 +4,7 @@
     "module": "ES2022",
     "moduleResolution": "Bundler",
     "rootDir": "api",
+    "outDir": "dist/api",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "strict": true,

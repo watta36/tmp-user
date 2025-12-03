@@ -1,6 +1,7 @@
-import { Injectable, OnDestroy, signal } from '@angular/core';
+import { Injectable, OnDestroy, effect, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { KvStoreService, KvState } from './kv-store.service';
+import { DEFAULT_THEME } from './themes';
 
 export type Product = {
   id: number;
@@ -20,14 +21,17 @@ export class ProductService implements OnDestroy {
   products = signal<Product[]>([]);
   private categoryOptions = signal<string[]>([]);
   private serverVersion = signal<number>(0);
+  private themeChoice = signal<string>(DEFAULT_THEME);
   private lastSnapshot: KvState | null = null;
   private versionPoller?: ReturnType<typeof setInterval>;
   private autoApplyTimer?: ReturnType<typeof setTimeout>;
   pendingChanges = signal(false);
+  private appliedThemeClass: string | null = null;
 
   constructor(private kvStore: KvStoreService) {
     this.refreshFromServer();
     this.startVersionPolling();
+    this.syncThemeToDom();
   }
 
   private markDirty() {
@@ -53,6 +57,7 @@ export class ProductService implements OnDestroy {
 
   list() { return this.products(); }
   categories(): string[] { return this.categoryOptions(); }
+  theme() { return this.themeChoice(); }
 
   async addCategory(name: string) {
     const normalized = this.normalizeCategories([name, ...this.categoryOptions()]);
@@ -103,6 +108,13 @@ export class ProductService implements OnDestroy {
   async clearAll() {
     this.products.set([]);
     this.categoryOptions.set([]);
+    this.markDirty();
+  }
+
+  setTheme(id: string) {
+    const next = (id || DEFAULT_THEME).trim();
+    const value = next || DEFAULT_THEME;
+    this.themeChoice.set(value);
     this.markDirty();
   }
 
@@ -166,7 +178,7 @@ export class ProductService implements OnDestroy {
       clearTimeout(this.autoApplyTimer);
       this.autoApplyTimer = undefined;
     }
-    await this.pushSnapshotToBackend({ products: this.products(), categories: this.categoryOptions() });
+    await this.pushSnapshotToBackend({ products: this.products(), categories: this.categoryOptions(), theme: this.themeChoice() });
     this.pendingChanges.set(false);
   }
 
@@ -184,23 +196,27 @@ export class ProductService implements OnDestroy {
     this.categoryOptions.set(cats);
 
     const version = state.version ?? this.serverVersion();
+    const theme = state.theme || DEFAULT_THEME;
+    this.themeChoice.set(theme);
     this.serverVersion.set(version);
     this.lastSnapshot = {
       products: [...this.products()],
       categories: [...this.categoryOptions()],
+      theme,
       version,
     };
     this.pendingChanges.set(false);
   }
 
-  private async pushSnapshotToBackend(state: { products: Product[]; categories: string[] }) {
+  private async pushSnapshotToBackend(state: { products: Product[]; categories: string[]; theme: string }) {
     try {
-      const res = await firstValueFrom(this.kvStore.applyChanges(state.products, state.categories));
+      const res = await firstValueFrom(this.kvStore.applyChanges(state.products, state.categories, state.theme));
       const version = res?.version ?? this.serverVersion() + 1;
       this.serverVersion.set(version);
       this.lastSnapshot = {
         products: [...state.products],
         categories: [...state.categories],
+        theme: state.theme,
         version,
       };
     } catch (err) {
@@ -266,5 +282,17 @@ export class ProductService implements OnDestroy {
     const next = name.trim();
     if (!next || this.categoryOptions().includes(next)) return;
     this.categoryOptions.set(this.normalizeCategories([...this.categoryOptions(), next]));
+  }
+
+  private syncThemeToDom() {
+    effect(() => {
+      const themeId = this.themeChoice();
+      if (typeof document === 'undefined') return;
+      const root = document.documentElement;
+      if (this.appliedThemeClass) root.classList.remove(this.appliedThemeClass);
+      const next = `theme-${themeId}`;
+      root.classList.add(next);
+      this.appliedThemeClass = next;
+    });
   }
 }

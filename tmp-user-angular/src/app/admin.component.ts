@@ -1,8 +1,9 @@
-import { Component, signal } from '@angular/core';
+import { Component, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProductService, Product } from './product.service';
 import { AuthService } from './auth.service';
+import { DEFAULT_THEME, THEME_OPTIONS, ThemeOption } from './themes';
 
 type Draft = Omit<Product, 'id'>;
 
@@ -29,46 +30,13 @@ export class AdminComponent {
     images: [],
   };
   importing = signal(false);
-  themes = [
-    {
-      id: 'aqua',
-      name: 'Aqua Flow',
-      description: 'โทนฟ้าใส สะอาดตา เน้นความเรียบง่าย',
-      preview: 'linear-gradient(120deg, #0ea5e9, #38bdf8)',
-    },
-    {
-      id: 'sunset',
-      name: 'Sunset Amber',
-      description: 'โทนส้มอุ่น ๆ ดูเป็นกันเองสำหรับแผงขาย',
-      preview: 'linear-gradient(120deg, #fb923c, #f97316)',
-    },
-    {
-      id: 'forest',
-      name: 'Forest Matcha',
-      description: 'โทนเขียวพาสเทล ให้ความรู้สึกสดชื่น',
-      preview: 'linear-gradient(120deg, #22c55e, #84cc16)',
-    },
-    {
-      id: 'noir',
-      name: 'Noir Velvet',
-      description: 'โทนมืดพรีเมียม เน้นตัวอักษรอ่านง่าย',
-      preview: 'linear-gradient(120deg, #0f172a, #1e293b)',
-    },
-  ];
-  currentTheme = signal(this.loadTheme());
+  themes: ThemeOption[] = THEME_OPTIONS;
+  currentTheme = computed(() => this.ps.theme() || DEFAULT_THEME);
 
   constructor(public ps: ProductService, public auth: AuthService) {}
 
   setTheme(themeId: string) {
-    this.currentTheme.set(themeId);
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('admin-theme', themeId);
-    }
-  }
-
-  loadTheme() {
-    if (typeof localStorage === 'undefined') return 'aqua';
-    return localStorage.getItem('admin-theme') || 'aqua';
+    this.ps.setTheme(themeId);
   }
 
   async onUploadNew(ev: Event) {

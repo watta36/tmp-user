@@ -14,7 +14,7 @@
           <h3 style="margin:4px 0">ปรับธีมหน้าผู้ดูแล</h3>
           <p class="small muted">เลือก 1 ใน 4 ธีมทันสมัย เพื่อให้เข้ากับร้านของคุณ</p>
         </div>
-        <div class="pill">{{ themes.find(t => t.id === currentTheme())?.name }}</div>
+        <div class="pill">{{ getCurrentThemeName() }}</div>
       </div>
       <div class="theme-grid">
         <button

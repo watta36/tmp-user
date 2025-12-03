@@ -24,10 +24,16 @@ export class KvStoreService {
     return this.http.get<{ version: number }>(`${this.baseUrl}/api/kv-products`, { params: { versionOnly: true } });
   }
 
-  applyChanges(products: Product[], categories: string[], theme: string): Observable<{ ok: boolean; version?: number }> {
-    return this.http.post<{ ok: boolean; version?: number }>(`${this.baseUrl}/api/kv-products`, {
-      action: 'apply',
-      products,
+  patchChanges(
+    upserts: Product[],
+    deleteIds: number[],
+    categories: string[],
+    theme: string,
+  ): Observable<{ ok: boolean; version?: number; categories?: string[] }> {
+    return this.http.post<{ ok: boolean; version?: number; categories?: string[] }>(`${this.baseUrl}/api/kv-products`, {
+      action: 'patch',
+      upserts,
+      deleteIds,
       categories,
       theme,
     });

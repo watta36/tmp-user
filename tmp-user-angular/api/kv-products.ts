@@ -1,3 +1,4 @@
+import type { Collection } from 'mongodb';
 import type { VercelRequest, VercelResponse } from './vercel-types.js';
 import { getDb, getProductsCollection } from './mongo-client.js';
 import { normalizeProducts, parseCsvProducts, type ProductDocument, type ProductPayload } from './product-schema.js';
@@ -8,11 +9,27 @@ const THEME_KEY = 'products_theme';
 const META_COLLECTION = 'metadata';
 const DEFAULT_THEME = 'aqua';
 
-function parseBody(body: unknown): Partial<{ products: ProductPayload[]; categories: string[]; action?: 'apply' | 'preview'; csv?: string; theme?: string; }> {
+function parseBody(body: unknown): Partial<{
+  products: ProductPayload[];
+  upserts: ProductPayload[];
+  deleteIds: number[];
+  categories: string[];
+  action?: 'apply' | 'preview' | 'patch';
+  csv?: string;
+  theme?: string;
+}> {
   if (typeof body === 'string') {
     try { return JSON.parse(body); } catch { return {}; }
   }
-  if (body && typeof body === 'object') return body as Partial<{ products: ProductPayload[]; categories: string[]; action?: 'apply' | 'preview'; csv?: string; theme?: string; }>;
+  if (body && typeof body === 'object') return body as Partial<{
+    products: ProductPayload[];
+    upserts: ProductPayload[];
+    deleteIds: number[];
+    categories: string[];
+    action?: 'apply' | 'preview' | 'patch';
+    csv?: string;
+    theme?: string;
+  }>;
   return {};
 }
 
@@ -82,6 +99,41 @@ async function replaceProducts(products: ProductDocument[], categories?: string[
   return { version, categories: categoryList };
 }
 
+async function applyPatch(upserts: ProductDocument[], deleteIds: number[], categories?: string[], theme?: string) {
+  const collection = await getProductsCollection();
+  const now = new Date();
+  if (deleteIds.length) {
+    await collection.deleteMany({ id: { $in: deleteIds } });
+  }
+
+  if (upserts.length) {
+    const existing = await collection
+      .find({ id: { $in: upserts.map((p) => p.id) } }, { projection: { id: 1, createdAt: 1 } })
+      .toArray();
+    const createdMap = new Map(existing.map((p) => [p.id, p.createdAt] as const));
+    const ops = upserts.map((p) => {
+      const createdAt = createdMap.get(p.id) ?? p.createdAt ?? now;
+      return {
+        updateOne: {
+          filter: { id: p.id },
+          update: { $set: { ...p, createdAt, updatedAt: now } },
+          upsert: true,
+        },
+      } as const;
+    });
+    await collection.bulkWrite(ops, { ordered: false });
+  }
+
+  const normalizedTheme = normalizeTheme(theme);
+  const categoriesToSave = categories?.length
+    ? normalizeCategories(categories)
+    : await collectCategoriesFromDb(collection);
+  await saveCategories(categoriesToSave);
+  await saveTheme(normalizedTheme);
+  const version = await bumpVersion();
+  return { version, categories: categoriesToSave, theme: normalizedTheme };
+}
+
 function normalizeCategories(list: string[]): string[] {
   return Array.from(new Set(list.map((c) => c.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'th'));
 }
@@ -89,6 +141,12 @@ function normalizeCategories(list: string[]): string[] {
 function normalizeTheme(id?: string | null): string {
   const trimmed = (id || '').trim();
   return trimmed || DEFAULT_THEME;
+}
+
+async function collectCategoriesFromDb(collection?: Collection<ProductDocument>): Promise<string[]> {
+  const col = collection ?? (await getProductsCollection());
+  const products = await col.find({}, { projection: { category: 1 } }).toArray();
+  return normalizeCategories(products.map((p) => p.category));
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -123,6 +181,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (payload.action === 'preview') {
       const categories = collectCategories(normalized, payload.categories);
       return res.status(200).json({ ok: true, products: normalized, categories, theme: incomingTheme });
+    }
+
+    if (payload.action === 'patch') {
+      const upserts = normalizeProducts(Array.isArray(payload.upserts) ? payload.upserts : incomingList);
+      const deleteIds = Array.isArray(payload.deleteIds)
+        ? payload.deleteIds.map((id) => Number(id)).filter((id) => Number.isFinite(id))
+        : [];
+      const result = await applyPatch(upserts, deleteIds, payload.categories, incomingTheme);
+      return res.status(200).json({ ok: true, ...result });
     }
 
     const result = await replaceProducts(normalized, payload.categories);

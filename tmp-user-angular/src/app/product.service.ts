@@ -390,7 +390,12 @@ export class ProductService implements OnDestroy {
       return Array.from(new Set(value.map((v) => v?.toString().trim()).filter(Boolean)));
     }
     if (typeof value === 'string') {
-      const parts = value.split(/\s*\|\s*|,\s*/).map((v) => v.trim()).filter(Boolean);
+      // อย่า split ด้วย comma เพราะ Data URL ของรูป (data:image/png;base64,...) มี comma อยู่แล้ว
+      // ใช้ only pipe หรือ newline แยกรูปหลายรายการแทน
+      const parts = value
+        .split(/\s*\|\s*|\n+/)
+        .map((v) => v.trim())
+        .filter(Boolean);
       return Array.from(new Set(parts));
     }
     return [];

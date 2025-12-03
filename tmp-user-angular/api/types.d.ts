@@ -1,9 +1,16 @@
 // Minimal ambient declarations to allow compiling the API handlers without external type packages.
 declare const process: { env: Record<string, string | undefined> };
+declare const Buffer: {
+  from(data: string, encoding?: string): { toString(encoding?: string): string };
+};
 
 declare module 'mongodb' {
+  export interface MongoClientOptions {
+    authSource?: string;
+  }
+
   export class MongoClient {
-    constructor(uri: string);
+    constructor(uri: string, options?: MongoClientOptions);
     connect(): Promise<void>;
     db(name?: string): Db;
   }
@@ -21,4 +28,9 @@ declare module 'mongodb' {
   }
 
   export class ObjectId {}
+
+  export class MongoServerError extends Error {
+    codeName?: string;
+    code?: number;
+  }
 }

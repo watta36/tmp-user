@@ -27,6 +27,8 @@ npm run build → dist/tmp-user/browser
   - `MONGODB_URI` → connection string
   - `MONGODB_DB` → `ecommerce`
   - `MONGODB_COLLECTION` → `products`
+  - (เลือกใส่) `MONGODB_AUTH_SOURCE` → auth database ถ้าบัญชีไม่ได้ใช้ฐานเดียวกับ URI
+  - (เลือกใส่) `MONGODB_URI_BASE64` → ถ้า secret เป็น base64 หรือมีบรรทัดใหม่ ใช้ตัวนี้แทน `MONGODB_URI`
 - ฝั่งแอดมิน (`KvStoreService` / `ProductService`):
   - โหลดสินค้า/หมวดหมู่จากฐานด้วย `loadState` (GET `/api/kv-products`).
   - บันทึก snapshot (เพิ่ม ลบ แก้ไข) ผ่าน `saveState` หรือ `applyChanges` ซึ่งจะเขียนลง collection และเพิ่มเลข version.

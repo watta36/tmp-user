@@ -7,10 +7,9 @@ const dbName = process.env.MONGODB_DB || dbNameFromUri || 'ecommerce';
 const collectionName = process.env.MONGODB_COLLECTION || 'products';
 const authSource = process.env.MONGODB_AUTH_SOURCE;
 const authSourceFromUri = uri ? extractAuthSource(uri) : undefined;
-// Fall back to the database name so deployments without explicit authSource
-// still authenticate against the target database instead of the default
-// ("admin" for SRV URIs).
-const resolvedAuthSource = authSource || authSourceFromUri || dbName;
+// Let the driver fall back to its default ("admin" for SRV URIs) unless an
+// explicit override is provided via env or query string.
+const resolvedAuthSource = authSource || authSourceFromUri;
 
 let client: MongoClient | null = null;
 

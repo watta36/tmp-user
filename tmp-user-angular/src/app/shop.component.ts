@@ -23,6 +23,29 @@ import { ProductService, Product } from './product.service';
     </div>
   </section>
 
+  <section class="container">
+    <h2>ตะกร้าสินค้า</h2>
+    <div *ngIf="!cart().length" class="small">ยังไม่มีสินค้าในตะกร้า</div>
+    <div class="table-wrap" *ngIf="cart().length">
+      <table class="table">
+        <thead><tr><th>สินค้า</th><th>จำนวน</th><th>ราคา/หน่วย</th><th>รวม</th><th></th></tr></thead>
+        <tbody>
+          <tr *ngFor="let it of cart()">
+            <td>{{ it.product.name }}</td>
+            <td><input class="input qty-input" type="number" min="0" [value]="it.qty" (input)="updateQty(it.product, $any($event.target).valueAsNumber)"></td>
+            <td>{{ it.product.price | number:'1.0-0' }} ฿</td>
+            <td>{{ (it.product.price * it.qty) | number:'1.0-0' }} ฿</td>
+            <td><button class="btn ghost" type="button" (click)="removeFromCart(it.product)">ลบ</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div *ngIf="cart().length" class="cart-actions">
+      <div class="small">ยอดรวม {{ cartTotal() | number:'1.0-0' }} ฿</div>
+      <button class="btn primary" (click)="orderCart()">สั่งสินค้าทั้งตะกร้าผ่าน LINE</button>
+    </div>
+  </section>
+
   <section class="container" style="padding-top:8px">
     <div class="filter-card">
       <div class="catbar">
@@ -80,29 +103,6 @@ import { ProductService, Product } from './product.service';
     </div>
 
     <p class="small" *ngIf="!filtered().length">ไม่พบสินค้า</p>
-  </section>
-
-  <section class="container">
-    <h2>ตะกร้าสินค้า</h2>
-    <div *ngIf="!cart().length" class="small">ยังไม่มีสินค้าในตะกร้า</div>
-    <div class="table-wrap" *ngIf="cart().length">
-      <table class="table">
-        <thead><tr><th>สินค้า</th><th>จำนวน</th><th>ราคา/หน่วย</th><th>รวม</th><th></th></tr></thead>
-        <tbody>
-          <tr *ngFor="let it of cart()">
-            <td>{{ it.product.name }}</td>
-            <td><input class="input qty-input" type="number" min="0" [value]="it.qty" (input)="updateQty(it.product, $any($event.target).valueAsNumber)"></td>
-            <td>{{ it.product.price | number:'1.0-0' }} ฿</td>
-            <td>{{ (it.product.price * it.qty) | number:'1.0-0' }} ฿</td>
-            <td><button class="btn ghost" type="button" (click)="removeFromCart(it.product)">ลบ</button></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <div *ngIf="cart().length" class="cart-actions">
-      <div class="small">ยอดรวม {{ cartTotal() | number:'1.0-0' }} ฿</div>
-      <button class="btn primary" (click)="orderCart()">สั่งสินค้าทั้งตะกร้าผ่าน LINE</button>
-    </div>
   </section>
 
   <div class="lightbox" *ngIf="detailProduct() as dp">

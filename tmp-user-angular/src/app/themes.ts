@@ -5,9 +5,27 @@ export type ThemeOption = {
   preview: string;
 };
 
-export const DEFAULT_THEME = 'aqua';
+export const DEFAULT_THEME = 'crimson';
 
 export const THEME_OPTIONS: ThemeOption[] = [
+  {
+    id: 'crimson',
+    name: 'Crimson Prime',
+    description: 'แดงกำลังดี เคร่งขรึม ดูมืออาชีพสไตล์ THANAN',
+    preview: 'linear-gradient(120deg, #c53030, #f87171)',
+  },
+  {
+    id: 'rosewood',
+    name: 'Rosewood Velvet',
+    description: 'แดงเลือดหมูพรีเมียม อบอุ่นน่าเชื่อถือ',
+    preview: 'linear-gradient(120deg, #8c1d18, #d94654)',
+  },
+  {
+    id: 'ember',
+    name: 'Ember Clay',
+    description: 'แดงอมน้ำตาล เท่ ๆ มีความดินเข้ากับเนื้อสัตว์',
+    preview: 'linear-gradient(120deg, #e25a3b, #f2994a)',
+  },
   {
     id: 'aqua',
     name: 'Aqua Flow',

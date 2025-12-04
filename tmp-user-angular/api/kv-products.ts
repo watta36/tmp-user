@@ -7,7 +7,7 @@ const VERSION_KEY = 'products_version';
 const CATEGORY_KEY = 'products_categories';
 const THEME_KEY = 'products_theme';
 const META_COLLECTION = 'metadata';
-const DEFAULT_THEME = 'aqua';
+const DEFAULT_THEME = 'crimson';
 
 function parseBody(body: unknown): Partial<{
   products: ProductPayload[];

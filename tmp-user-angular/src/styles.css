@@ -1,49 +1,118 @@
 :root {
-  --primary: #0ea5e9;
-  --accent: #0f172a;
-  --ink: #0f172a;
-  --muted: #64748b;
-  --bg: #f8fafc;
-  --surface: #ffffff;
-  --surface-strong: #f1f5f9;
-  --border: #e2e8f0;
-  --nav-bg: #ffffff;
-  --nav-border: #e2e8f0;
-  --nav-text: #0f172a;
-  --brand-gradient: linear-gradient(145deg, #0ea5e9, #38bdf8);
-  --hero-gradient: linear-gradient(110deg, #e0f2fe, #f8fafc);
-  --hero-border: #e0f2fe;
-  --card-surface: #ffffff;
-  --card-border: #e2e8f0;
-  --pill-soft-bg: #ffffff;
-  --pill-soft-border: #e2e8f0;
-  --chip-bg: #f8fafc;
-  --shadow-strong: 0 12px 32px -22px rgba(14, 165, 233, 0.45);
+  --primary: #c53030;
+  --accent: #3f0f0f;
+  --ink: #2e0f0f;
+  --muted: #8b3030;
+  --bg: #fff6f5;
+  --surface: #fff1f0;
+  --surface-strong: #ffe7e6;
+  --border: #f1a5a5;
+  --nav-bg: #fff1f0;
+  --nav-border: #f1a5a5;
+  --nav-text: #2e0f0f;
+  --brand-gradient: linear-gradient(145deg, #c53030, #f87171);
+  --hero-gradient: linear-gradient(110deg, #fff1f0, #ffe4e1);
+  --hero-border: #f1a5a5;
+  --card-surface: #fff7f6;
+  --card-border: #f1a5a5;
+  --pill-soft-bg: #fff9f8;
+  --pill-soft-border: #f1a5a5;
+  --chip-bg: #fff3f2;
+  --shadow-strong: 0 12px 32px -22px rgba(197, 48, 48, 0.45);
 
-  --admin-primary: #0ea5e9;
-  --admin-primary-strong: #0284c7;
-  --admin-ink: #0f172a;
-  --admin-muted: #64748b;
+  --admin-primary: #c53030;
+  --admin-primary-strong: #991b1b;
+  --admin-ink: #2e0f0f;
+  --admin-muted: #8b3030;
   --admin-surface: #fff;
-  --admin-surface-strong: #f8fafc;
-  --admin-border: #e2e8f0;
-  --admin-ghost-border: #e2e8f0;
-  --admin-hero: linear-gradient(90deg, #e0f2fe, #f8fafc);
-  --admin-pill: #0ea5e9;
-  --admin-pill-ghost: #f8fafc;
-  --admin-pill-ghost-border: #e5e7eb;
-  --admin-card-shadow: 0 6px 18px -10px rgba(15, 23, 42, 0.25);
-  --admin-chip-bg: #ecfeff;
-  --admin-chip-border: #bae6fd;
+  --admin-surface-strong: #fff6f5;
+  --admin-border: #f1a5a5;
+  --admin-ghost-border: #f1a5a5;
+  --admin-hero: linear-gradient(90deg, #fff1f0, #ffe4e1);
+  --admin-pill: #c53030;
+  --admin-pill-ghost: #fff3f2;
+  --admin-pill-ghost-border: #f1a5a5;
+  --admin-card-shadow: 0 6px 18px -10px rgba(47, 12, 12, 0.25);
+  --admin-chip-bg: #fff3f2;
+  --admin-chip-border: #f1a5a5;
   --admin-success: #22c55e;
   --admin-success-bg: #dcfce7;
   --admin-success-text: #166534;
-  --admin-table-zebra: #fafbff;
-  --admin-table-hover: #eef2ff;
-  --admin-soft-stroke: #cbd5e1;
-  --admin-upload-bg: #f8fafc;
-  --admin-hero-border: #bae6fd;
+  --admin-table-zebra: #fff1f0;
+  --admin-table-hover: #ffe4e1;
+  --admin-soft-stroke: #f1a5a5;
+  --admin-upload-bg: #fff6f5;
+  --admin-hero-border: #f1a5a5;
   --admin-ink-contrast: #fff;
+}
+
+:root.theme-crimson {
+  --primary: #c53030;
+  --accent: #3f0f0f;
+  --ink: #2e0f0f;
+  --muted: #8b3030;
+  --bg: #fff6f5;
+  --surface: #fff1f0;
+  --surface-strong: #ffe7e6;
+  --border: #f1a5a5;
+  --nav-bg: #fff1f0;
+  --nav-border: #f1a5a5;
+  --nav-text: #2e0f0f;
+  --brand-gradient: linear-gradient(145deg, #c53030, #f87171);
+  --hero-gradient: linear-gradient(110deg, #fff1f0, #ffe4e1);
+  --hero-border: #f1a5a5;
+  --card-surface: #fff7f6;
+  --card-border: #f1a5a5;
+  --pill-soft-bg: #fff9f8;
+  --pill-soft-border: #f1a5a5;
+  --chip-bg: #fff3f2;
+  --shadow-strong: 0 12px 32px -22px rgba(197, 48, 48, 0.45);
+}
+
+:root.theme-rosewood {
+  --primary: #8c1d18;
+  --accent: #2c0d0c;
+  --ink: #240a0a;
+  --muted: #7a1f1a;
+  --bg: #fff7f5;
+  --surface: #fff1ee;
+  --surface-strong: #ffe6e1;
+  --border: #efb3ae;
+  --nav-bg: #fff1ee;
+  --nav-border: #efb3ae;
+  --nav-text: #240a0a;
+  --brand-gradient: linear-gradient(145deg, #8c1d18, #d94654);
+  --hero-gradient: linear-gradient(115deg, #fff1ee, #ffe2dd);
+  --hero-border: #efb3ae;
+  --card-surface: #fff7f6;
+  --card-border: #efb3ae;
+  --pill-soft-bg: #fff5f2;
+  --pill-soft-border: #efb3ae;
+  --chip-bg: #fff1ee;
+  --shadow-strong: 0 12px 32px -22px rgba(140, 29, 24, 0.45);
+}
+
+:root.theme-ember {
+  --primary: #e25a3b;
+  --accent: #3c1c12;
+  --ink: #2f140e;
+  --muted: #9a3c28;
+  --bg: #fff6f1;
+  --surface: #fff0ea;
+  --surface-strong: #ffe3d6;
+  --border: #f3c2ac;
+  --nav-bg: #fff0ea;
+  --nav-border: #f3c2ac;
+  --nav-text: #2f140e;
+  --brand-gradient: linear-gradient(145deg, #e25a3b, #f2994a);
+  --hero-gradient: linear-gradient(115deg, #fff0ea, #ffe3d6);
+  --hero-border: #f3c2ac;
+  --card-surface: #fff7f2;
+  --card-border: #f3c2ac;
+  --pill-soft-bg: #fff5ef;
+  --pill-soft-border: #f3c2ac;
+  --chip-bg: #fff1ea;
+  --shadow-strong: 0 12px 32px -22px rgba(226, 90, 59, 0.4);
 }
 
 :root.theme-aqua {

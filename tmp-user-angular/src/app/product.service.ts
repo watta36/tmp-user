@@ -141,7 +141,7 @@ export class ProductService implements OnDestroy {
 
     const normalizedProducts = this.normalizeList(products);
     const categories = this.normalizeCategories(normalizedProducts.map((p) => p.category));
-    const chunkSize = 20;
+    const chunkSize = 1;
     let latestVersion = this.serverVersion();
 
     for (let i = 0; i < normalizedProducts.length; i += chunkSize) {
@@ -230,17 +230,33 @@ export class ProductService implements OnDestroy {
     const diff = this.buildDiff(snapshot, state);
     if (!diff.upserts.length && !diff.deletedIds.length && !diff.categoriesChanged && !diff.themeChanged) return;
 
+    const operations: { upserts: Product[]; deleteIds: number[] }[] = [];
+
+    if (diff.upserts.length || diff.deletedIds.length) {
+      diff.upserts.forEach((product) => operations.push({ upserts: [product], deleteIds: [] }));
+      diff.deletedIds.forEach((id) => operations.push({ upserts: [], deleteIds: [id] }));
+    } else {
+      operations.push({ upserts: [], deleteIds: [] });
+    }
+
     try {
-      const res = await firstValueFrom(
-        this.kvStore.patchChanges(diff.upserts, diff.deletedIds, state.categories, state.theme)
-      );
-      const version = res?.version ?? this.serverVersion() + 1;
-      this.serverVersion.set(version);
+      let latestVersion = this.serverVersion();
+      let latestCategories = state.categories;
+
+      for (const op of operations) {
+        const res = await firstValueFrom(
+          this.kvStore.patchChanges(op.upserts, op.deleteIds, state.categories, state.theme)
+        );
+        if (res?.version) latestVersion = res.version;
+        if (res?.categories?.length) latestCategories = res.categories;
+      }
+
+      this.serverVersion.set(latestVersion);
       this.lastSnapshot = {
         products: [...state.products],
-        categories: [...(res.categories || state.categories)],
+        categories: [...latestCategories],
         theme: state.theme,
-        version,
+        version: latestVersion,
       };
     } catch (err) {
       console.error('บันทึกข้อมูลไปยัง Edge Config/KV ไม่สำเร็จ', err);

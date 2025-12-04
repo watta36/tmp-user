@@ -12,7 +12,7 @@ import { APP_CONFIG } from './config';
   <nav class="nav">
     <div class="container nav__inner">
       <div class="nav__brand">
-        <div class="brand-mark">TN</div>
+        <div class="brand-mark">TPF</div>
         <div>
           <div class="brand">THANAN PROFOODS</div>
           <div class="nav__subtitle">ค้าส่งอาหารแช่แข็งราคาส่ง</div>

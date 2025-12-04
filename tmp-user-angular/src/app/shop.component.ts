@@ -95,10 +95,6 @@ import { ProductService, Product } from './product.service';
               <div class="unit muted">{{ p.price | number:'1.0-0' }} ฿ / {{ p.unit }}</div>
             </div>
           </div>
-          <div class="meta-row">
-            <span class="pill-ghost">สดใหม่ คัดเกรด</span>
-            <span class="pill-ghost">แพ็กสุญญากาศ</span>
-          </div>
           <div class="action-row">
             <button class="btn" (click)="addToCart(p,1)">เพิ่มตะกร้า</button>
             <button class="btn primary" (click)="orderSingle(p)">สั่งผ่าน LINE</button>

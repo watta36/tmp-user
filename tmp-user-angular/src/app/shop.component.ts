@@ -55,18 +55,23 @@ import { ProductService, Product } from './product.service';
         </ng-container>
       </div>
       <div class="toolbar">
-        <input class="input" placeholder="ค้นหาเมนูหรือรหัสสินค้า..." (input)="q = ($any($event.target).value || '').toString()">
-        <select class="input" style="max-width:220px" (change)="sort = $any($event.target).value">
+        <input class="input" placeholder="ค้นหาเมนูหรือรหัสสินค้า..." [value]="q" (input)="updateQuery($any($event.target).value)">
+        <select class="input" style="max-width:220px" [value]="sort" (change)="changeSort($any($event.target).value)">
           <option value="latest">เรียงล่าสุด</option>
           <option value="price-asc">ราคาต่ำ-สูง</option>
           <option value="price-desc">ราคาสูง-ต่ำ</option>
           <option value="name">ชื่อสินค้า (ก-ฮ)</option>
         </select>
+        <select class="input" style="max-width:200px" [value]="pageSize()" (change)="changePageSize($any($event.target).value)">
+          <option [value]="6">6 สินค้าต่อหน้า</option>
+          <option [value]="9">9 สินค้าต่อหน้า</option>
+          <option [value]="12">12 สินค้าต่อหน้า</option>
+        </select>
       </div>
     </div>
 
     <div class="grid product-grid">
-      <article class="card product-card" *ngFor="let p of filtered()">
+      <article class="card product-card" *ngFor="let p of pagedProducts()">
         <div class="product-media">
           <div class="product-img-frame">
             <img [src]="imgSrc(p)" [alt]="p.name" (click)="openDetail(p)" class="product-img">
@@ -102,8 +107,62 @@ import { ProductService, Product } from './product.service';
       </article>
     </div>
 
-    <p class="small" *ngIf="!filtered().length">ไม่พบสินค้า</p>
+    <div class="pagination" *ngIf="filteredList().length > pageSize()">
+      <button class="btn ghost" type="button" (click)="prevPage()" [disabled]="page() === 1">« หน้าก่อนหน้า</button>
+      <div class="page-info">
+        หน้า {{ page() }} / {{ totalPages() }} · แสดง {{ pageRangeStart() }}-{{ pageRangeEnd() }} จาก {{ filteredList().length }} รายการ
+      </div>
+      <button class="btn ghost" type="button" (click)="nextPage()" [disabled]="page() >= totalPages()">หน้าถัดไป »</button>
+    </div>
+
+    <p class="small" *ngIf="!filteredList().length">ไม่พบสินค้า</p>
   </section>
+
+  <button class="floating-cart" type="button" (click)="toggleCartPanel()">
+    <div class="floating-cart__icon">🛒</div>
+    <div class="floating-cart__meta">
+      <div class="floating-cart__count">{{ cartCount() }} ชิ้น</div>
+      <div class="floating-cart__total">{{ cartTotal() | number:'1.0-0' }} ฿</div>
+    </div>
+  </button>
+
+  <div class="cart-flyout" *ngIf="showCartPanel()">
+    <div class="cart-flyout__backdrop" (click)="toggleCartPanel()"></div>
+    <div class="cart-flyout__panel">
+      <div class="cart-flyout__header">
+        <div>
+          <p class="smallcaps eyebrow">ตะกร้าสินค้า</p>
+          <h3 class="cart-flyout__title">ตรวจสอบสินค้าทั้งหมด</h3>
+        </div>
+        <button class="btn ghost" type="button" (click)="toggleCartPanel()">ปิด</button>
+      </div>
+      <div class="cart-flyout__body" *ngIf="cart().length; else emptyCart">
+        <div class="cart-flyout__list">
+          <div class="cart-flyout__item" *ngFor="let it of cart()">
+            <div>
+              <div class="cart-flyout__name">{{ it.product.name }}</div>
+              <div class="muted small">{{ it.product.price | number:'1.0-0' }} ฿ / {{ it.product.unit }}</div>
+            </div>
+            <div class="cart-flyout__controls">
+              <input class="input qty-input" type="number" min="0" [value]="it.qty" (input)="updateQty(it.product, $any($event.target).valueAsNumber)">
+              <div class="cart-flyout__line">{{ (it.product.price * it.qty) | number:'1.0-0' }} ฿</div>
+              <button class="btn ghost" type="button" (click)="removeFromCart(it.product)">ลบ</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ng-template #emptyCart>
+        <div class="muted small">ยังไม่มีสินค้าในตะกร้า</div>
+      </ng-template>
+      <div class="cart-flyout__footer">
+        <div>
+          <div class="muted small">รวมทั้งหมด</div>
+          <div class="cart-flyout__sum">{{ cartTotal() | number:'1.0-0' }} ฿ ({{ cartCount() }} ชิ้น)</div>
+        </div>
+        <button class="btn primary" type="button" [disabled]="!cart().length" (click)="orderCart()">สั่งทั้งตะกร้าผ่าน LINE</button>
+      </div>
+    </div>
+  </div>
 
   <div class="lightbox" *ngIf="detailProduct() as dp">
     <div class="lightbox__backdrop" (click)="closeDetail()"></div>
@@ -135,6 +194,9 @@ export class ShopComponent {
   q = '';
   sort: 'latest' | 'price-asc' | 'price-desc' | 'name' = 'latest';
   activeCat = signal<string>('');
+  page = signal(1);
+  pageSize = signal(9);
+  showCartPanel = signal(false);
   cart = signal<{product: Product; qty: number}[]>(JSON.parse(localStorage.getItem('tmp_cart')||'[]'));
   detailProduct = signal<Product | null>(null);
   detailIndex = signal(0);
@@ -145,7 +207,21 @@ export class ShopComponent {
   imgSrc(p: Product){ return this.productImages(p)[0] || ''; }
   productImages(p: Product){ return (p.images && p.images.length ? p.images : (p.image ? [p.image] : [])).filter(Boolean); }
 
-  selectCat(c: string){ this.activeCat.set(c); }
+  updateQuery(value: string){
+    this.q = (value || '').toString();
+    this.page.set(1);
+  }
+  changeSort(value: 'latest' | 'price-asc' | 'price-desc' | 'name'){
+    this.sort = value;
+    this.page.set(1);
+  }
+  changePageSize(value: number){
+    const parsed = Math.max(1, Number(value) || this.pageSize());
+    this.pageSize.set(parsed);
+    this.page.set(1);
+  }
+
+  selectCat(c: string){ this.activeCat.set(c); this.page.set(1); }
   iconFor(c: string){
     const t = (c||'').toLowerCase();
     if(t.includes('กุ้ง')||t.includes('shrimp')) return '🦐';
@@ -155,7 +231,7 @@ export class ShopComponent {
     return '📦';
   }
 
-  filtered() {
+  filteredList() {
     let list = this.ps.list().filter(p => (p.name + ' ' + (p.description||'')).toLowerCase().includes(this.q.toLowerCase()));
     if (this.activeCat()) list = list.filter(p => p.category === this.activeCat());
     switch (this.sort) {
@@ -166,6 +242,34 @@ export class ShopComponent {
     }
     return list;
   }
+
+  pagedProducts() {
+    const products = this.filteredList();
+    const totalPages = this.totalPages();
+    const currentPage = Math.min(Math.max(this.page(), 1), totalPages || 1);
+    if (currentPage !== this.page()) this.page.set(currentPage);
+    const start = (currentPage - 1) * this.pageSize();
+    return products.slice(start, start + this.pageSize());
+  }
+
+  totalPages(){
+    const total = Math.ceil(this.filteredList().length / this.pageSize());
+    return Math.max(total || 0, 1);
+  }
+  nextPage(){ if (this.page() < this.totalPages()) this.page.set(this.page() + 1); }
+  prevPage(){ if (this.page() > 1) this.page.set(this.page() - 1); }
+  pageRangeStart(){
+    const totalItems = this.filteredList().length;
+    if (!totalItems) return 0;
+    return (this.page() - 1) * this.pageSize() + 1;
+  }
+  pageRangeEnd(){
+    const totalItems = this.filteredList().length;
+    if (!totalItems) return 0;
+    return Math.min(totalItems, this.pageRangeStart() + this.pageSize() - 1);
+  }
+
+  toggleCartPanel(){ this.showCartPanel.set(!this.showCartPanel()); }
 
   addToCart(p: Product, qty: number){
     const bag = this.cart().slice();

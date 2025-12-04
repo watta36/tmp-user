@@ -1362,6 +1362,11 @@ hr {
   font-size: 12px;
 }
 
+.unit-price {
+    font-size: 20px;
+    font-weight: 800;
+}
+
 .meta-row {
   display: flex;
   gap: 8px;

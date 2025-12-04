@@ -92,7 +92,7 @@ import { ProductService, Product } from './product.service';
               <p class="muted product-desc">{{ p.description || 'พร้อมจัดส่งทันที สอบถามรายละเอียดเพิ่มเติมได้ทาง LINE' }}</p>
             </div>
             <div class="price-block">
-              <div class="unit muted">{{ p.price | number:'1.0-0' }} ฿ / {{ p.unit }}</div>
+              <div class="unit-price muted">{{ p.price | number:'1.0-0' }} ฿ / {{ p.unit }}</div>
             </div>
           </div>
           <div class="action-row">
@@ -323,7 +323,7 @@ export class ShopComponent {
     this.detailIndex.set((this.detailIndex() - 1 + imgs.length) % imgs.length);
   }
   openLine(text: string){
-    const LINE_ID = '@tmpseafood';
+    const LINE_ID = '@thanan.pf';
     const url = `https://line.me/R/oaMessage/${encodeURIComponent(LINE_ID)}/?${encodeURIComponent(text)}`;
     (window as any).location.href = url;
   }

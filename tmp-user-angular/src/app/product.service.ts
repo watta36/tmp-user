@@ -3,6 +3,8 @@ import { firstValueFrom } from 'rxjs';
 import { KvStoreService, KvState } from './kv-store.service';
 import { DEFAULT_THEME } from './themes';
 
+const DEFAULT_PAGE_SIZE = 9;
+
 export type Product = {
   id: number;
   name: string;
@@ -22,6 +24,7 @@ export class ProductService implements OnDestroy {
   private categoryOptions = signal<string[]>([]);
   private serverVersion = signal<number>(0);
   private themeChoice = signal<string>(DEFAULT_THEME);
+  private pageSizeChoice = signal<number>(DEFAULT_PAGE_SIZE);
   private lastSnapshot: KvState | null = null;
   private versionPoller?: ReturnType<typeof setInterval>;
   private autoApplyTimer?: ReturnType<typeof setTimeout>;
@@ -58,6 +61,7 @@ export class ProductService implements OnDestroy {
   list() { return this.products(); }
   categories(): string[] { return this.categoryOptions(); }
   theme() { return this.themeChoice(); }
+  pageSize() { return this.pageSizeChoice(); }
 
   async addCategory(name: string) {
     const normalized = this.normalizeCategories([name, ...this.categoryOptions()]);
@@ -118,6 +122,12 @@ export class ProductService implements OnDestroy {
     this.markDirty();
   }
 
+  setPageSize(size: number) {
+    const normalized = this.normalizePageSize(size);
+    this.pageSizeChoice.set(normalized);
+    this.markDirty();
+  }
+
   exportToCsv(filename = 'products.csv') {
     const headers = ['id', 'name', 'price', 'unit', 'category', 'sku', 'description', 'slug', 'image', 'images'] as const;
     const rows = this.products().map((p) => headers.map((k) => {
@@ -150,6 +160,7 @@ export class ProductService implements OnDestroy {
         reset: i === 0,
         categories,
         theme: this.themeChoice(),
+        pageSize: this.pageSizeChoice(),
       }));
       if (res?.version) latestVersion = res.version;
     }
@@ -159,6 +170,7 @@ export class ProductService implements OnDestroy {
       categories,
       version: latestVersion,
       theme: this.themeChoice(),
+      pageSize: this.pageSizeChoice(),
     });
     return { imported: normalizedProducts.length, skipped };
   }
@@ -195,7 +207,12 @@ export class ProductService implements OnDestroy {
       clearTimeout(this.autoApplyTimer);
       this.autoApplyTimer = undefined;
     }
-    await this.pushSnapshotToBackend({ products: this.products(), categories: this.categoryOptions(), theme: this.themeChoice() });
+    await this.pushSnapshotToBackend({
+      products: this.products(),
+      categories: this.categoryOptions(),
+      theme: this.themeChoice(),
+      pageSize: this.pageSizeChoice(),
+    });
     this.pendingChanges.set(false);
   }
 
@@ -214,21 +231,24 @@ export class ProductService implements OnDestroy {
 
     const version = state.version ?? this.serverVersion();
     const theme = state.theme || DEFAULT_THEME;
+    const pageSize = this.normalizePageSize(state.pageSize ?? DEFAULT_PAGE_SIZE);
     this.themeChoice.set(theme);
+    this.pageSizeChoice.set(pageSize);
     this.serverVersion.set(version);
     this.lastSnapshot = {
       products: [...this.products()],
       categories: [...this.categoryOptions()],
       theme,
+      pageSize,
       version,
     };
     this.pendingChanges.set(false);
   }
 
-  private async pushSnapshotToBackend(state: { products: Product[]; categories: string[]; theme: string }) {
+  private async pushSnapshotToBackend(state: { products: Product[]; categories: string[]; theme: string; pageSize: number }) {
     const snapshot = this.lastSnapshot;
     const diff = this.buildDiff(snapshot, state);
-    if (!diff.upserts.length && !diff.deletedIds.length && !diff.categoriesChanged && !diff.themeChanged) return;
+    if (!diff.upserts.length && !diff.deletedIds.length && !diff.categoriesChanged && !diff.themeChanged && !diff.pageSizeChanged) return;
 
     const operations: { upserts: Product[]; deleteIds: number[] }[] = [];
 
@@ -245,10 +265,11 @@ export class ProductService implements OnDestroy {
 
       for (const op of operations) {
         const res = await firstValueFrom(
-          this.kvStore.patchChanges(op.upserts, op.deleteIds, state.categories, state.theme)
+          this.kvStore.patchChanges(op.upserts, op.deleteIds, state.categories, state.theme, state.pageSize)
         );
         if (res?.version) latestVersion = res.version;
         if (res?.categories?.length) latestCategories = res.categories;
+        if (res?.pageSize) state.pageSize = res.pageSize;
       }
 
       this.serverVersion.set(latestVersion);
@@ -256,6 +277,7 @@ export class ProductService implements OnDestroy {
         products: [...state.products],
         categories: [...latestCategories],
         theme: state.theme,
+        pageSize: state.pageSize,
         version: latestVersion,
       };
     } catch (err) {
@@ -264,13 +286,14 @@ export class ProductService implements OnDestroy {
     }
   }
 
-  private buildDiff(snapshot: KvState | null, state: { products: Product[]; categories: string[]; theme: string }) {
+  private buildDiff(snapshot: KvState | null, state: { products: Product[]; categories: string[]; theme: string; pageSize: number }) {
     if (!snapshot) {
       return {
         upserts: state.products,
         deletedIds: [] as number[],
         categoriesChanged: true,
         themeChanged: true,
+        pageSizeChanged: true,
       };
     }
 
@@ -290,6 +313,7 @@ export class ProductService implements OnDestroy {
       deletedIds,
       categoriesChanged: !this.areArraysEqual(snapshot.categories, state.categories),
       themeChanged: (snapshot.theme || DEFAULT_THEME) !== state.theme,
+      pageSizeChanged: this.normalizePageSize(snapshot.pageSize ?? DEFAULT_PAGE_SIZE) !== this.normalizePageSize(state.pageSize),
     };
   }
 
@@ -430,6 +454,16 @@ export class ProductService implements OnDestroy {
       .trim()
       .replace(/\s+/g, '-')
       .slice(0, 60);
+  }
+
+  private normalizePageSize(size: number): number {
+    const allowed = [6, 9, 12];
+    const parsed = Number.isFinite(size) ? Number(size) : DEFAULT_PAGE_SIZE;
+    if (allowed.includes(parsed)) return parsed;
+    const fallback = allowed.reduce((closest, option) => {
+      return Math.abs(option - parsed) < Math.abs(closest - parsed) ? option : closest;
+    }, allowed[0]);
+    return fallback || DEFAULT_PAGE_SIZE;
   }
 
   private normalizeList(list: Product[]): Product[] {

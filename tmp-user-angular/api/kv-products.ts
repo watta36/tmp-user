@@ -6,8 +6,10 @@ import { normalizeProducts, parseCsvProducts, type ProductDocument, type Product
 const VERSION_KEY = 'products_version';
 const CATEGORY_KEY = 'products_categories';
 const THEME_KEY = 'products_theme';
+const PAGE_SIZE_KEY = 'products_page_size';
 const META_COLLECTION = 'metadata';
 const DEFAULT_THEME = 'crimson';
+const DEFAULT_PAGE_SIZE = 9;
 
 function parseBody(body: unknown): Partial<{
   products: ProductPayload[];
@@ -18,6 +20,7 @@ function parseBody(body: unknown): Partial<{
   csv?: string;
   theme?: string;
   reset?: boolean;
+  pageSize?: number;
 }> {
   if (typeof body === 'string') {
     try { return JSON.parse(body); } catch { return {}; }
@@ -79,6 +82,21 @@ async function saveTheme(theme: string) {
   );
 }
 
+async function getPageSize(): Promise<number> {
+  const db = await getDb();
+  const meta = await db.collection<{ _id: string; value: number }>(META_COLLECTION).findOne({ _id: PAGE_SIZE_KEY });
+  return normalizePageSize(meta?.value);
+}
+
+async function savePageSize(pageSize: number) {
+  const db = await getDb();
+  await db.collection<{ _id: string; value: unknown }>(META_COLLECTION).findOneAndUpdate(
+    { _id: PAGE_SIZE_KEY },
+    { $set: { value: normalizePageSize(pageSize) } },
+    { upsert: true },
+  );
+}
+
 async function bumpVersion() {
   const db = await getDb();
   const result = await db.collection<{ _id: string; value: number }>(META_COLLECTION).findOneAndUpdate(
@@ -89,7 +107,7 @@ async function bumpVersion() {
   return result.value?.value ?? 1;
 }
 
-async function replaceProducts(products: ProductDocument[], categories?: string[]) {
+async function replaceProducts(products: ProductDocument[], categories?: string[], pageSize?: number) {
   const collection = await getProductsCollection();
   const now = new Date();
   const docs = products.map((p) => ({ ...p, createdAt: p.createdAt ?? now, updatedAt: now }));
@@ -97,11 +115,12 @@ async function replaceProducts(products: ProductDocument[], categories?: string[
   if (docs.length) await collection.insertMany(docs);
   const categoryList = collectCategories(products, categories);
   await saveCategories(categoryList);
+  await savePageSize(normalizePageSize(pageSize));
   const version = await bumpVersion();
-  return { version, categories: categoryList };
+  return { version, categories: categoryList, pageSize: normalizePageSize(pageSize) };
 }
 
-async function applyPatch(upserts: ProductDocument[], deleteIds: number[], categories?: string[], theme?: string) {
+async function applyPatch(upserts: ProductDocument[], deleteIds: number[], categories?: string[], theme?: string, pageSize?: number) {
   const collection = await getProductsCollection();
   const now = new Date();
   if (deleteIds.length) {
@@ -132,8 +151,9 @@ async function applyPatch(upserts: ProductDocument[], deleteIds: number[], categ
     : await collectCategoriesFromDb(collection);
   await saveCategories(categoriesToSave);
   await saveTheme(normalizedTheme);
+  await savePageSize(normalizePageSize(pageSize));
   const version = await bumpVersion();
-  return { version, categories: categoriesToSave, theme: normalizedTheme };
+  return { version, categories: categoriesToSave, theme: normalizedTheme, pageSize: normalizePageSize(pageSize) };
 }
 
 function normalizeCategories(list: string[]): string[] {
@@ -143,6 +163,16 @@ function normalizeCategories(list: string[]): string[] {
 function normalizeTheme(id?: string | null): string {
   const trimmed = (id || '').trim();
   return trimmed || DEFAULT_THEME;
+}
+
+function normalizePageSize(value?: number | null): number {
+  const allowed = [6, 9, 12];
+  const parsed = typeof value === 'number' ? value : DEFAULT_PAGE_SIZE;
+  if (allowed.includes(parsed)) return parsed;
+  const fallback = allowed.reduce((closest, option) => {
+    return Math.abs(option - parsed) < Math.abs(closest - parsed) ? option : closest;
+  }, allowed[0]);
+  return fallback || DEFAULT_PAGE_SIZE;
 }
 
 async function collectCategoriesFromDb(collection?: Collection<ProductDocument>): Promise<string[]> {
@@ -160,16 +190,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method === 'GET') {
     const collection = await getProductsCollection();
-    const [items, storedCategories, version, theme] = await Promise.all([
+    const [items, storedCategories, version, theme, pageSize] = await Promise.all([
       collection.find({}).sort({ id: 1 }).toArray(),
       getCategories(),
       getVersion(),
       getTheme(),
+      getPageSize(),
     ]);
     const products = items.map(({ _id, ...doc }: ProductDocument & { _id?: unknown }) => ({ ...doc }));
     const derivedCategories = collectCategories(products);
     const categories = storedCategories?.length ? storedCategories : derivedCategories;
-    return res.status(200).json({ products, categories, theme: normalizeTheme(theme), version });
+    return res.status(200).json({ products, categories, theme: normalizeTheme(theme), version, pageSize: normalizePageSize(pageSize) });
   }
 
   if (req.method === 'POST') {
@@ -179,6 +210,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const incomingList = Array.isArray(payload.products) ? payload.products : [];
     const normalized = fromCsv.length ? fromCsv : normalizeProducts(incomingList);
     const incomingTheme = normalizeTheme(payload.theme);
+    const incomingPageSize = normalizePageSize(payload.pageSize);
 
     if (payload.action === 'importChunk') {
       const chunk = normalizeProducts(incomingList);
@@ -192,16 +224,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           : await collectCategoriesFromDb(collection);
         await saveCategories(categories);
         await saveTheme(incomingTheme);
+        await savePageSize(incomingPageSize);
         const version = await bumpVersion();
-        return res.status(200).json({ ok: true, imported: 0, categories, theme: incomingTheme, version });
+        return res.status(200).json({ ok: true, imported: 0, categories, theme: incomingTheme, pageSize: incomingPageSize, version });
       }
-      const result = await applyPatch(chunk, [], payload.categories, incomingTheme);
+      const result = await applyPatch(chunk, [], payload.categories, incomingTheme, incomingPageSize);
       return res.status(200).json({ ok: true, ...result, imported: chunk.length });
     }
 
     if (payload.action === 'preview') {
       const categories = collectCategories(normalized, payload.categories);
-      return res.status(200).json({ ok: true, products: normalized, categories, theme: incomingTheme });
+      return res.status(200).json({ ok: true, products: normalized, categories, theme: incomingTheme, pageSize: incomingPageSize });
     }
 
     if (payload.action === 'patch') {
@@ -209,17 +242,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const deleteIds = Array.isArray(payload.deleteIds)
         ? payload.deleteIds.map((id) => Number(id)).filter((id) => Number.isFinite(id))
         : [];
-      const result = await applyPatch(upserts, deleteIds, payload.categories, incomingTheme);
+      const result = await applyPatch(upserts, deleteIds, payload.categories, incomingTheme, incomingPageSize);
       return res.status(200).json({ ok: true, ...result });
     }
 
-    const result = await replaceProducts(normalized, payload.categories);
+    const result = await replaceProducts(normalized, payload.categories, incomingPageSize);
     await saveTheme(incomingTheme);
+    await savePageSize(incomingPageSize);
     return res.status(200).json({
       ok: true,
       products: normalized.length,
       categories: result.categories,
       theme: incomingTheme,
+      pageSize: incomingPageSize,
       version: result.version,
     });
   }

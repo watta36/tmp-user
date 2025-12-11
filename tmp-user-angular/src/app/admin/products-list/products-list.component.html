@@ -33,6 +33,29 @@
       </div>
     </div>
 
+    <div class="panel admin-card">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">การแบ่งหน้า</p>
+          <h3 style="margin:4px 0">จำนวนสินค้าต่อหน้า</h3>
+          <p class="small muted">ตั้งค่าจำนวนสินค้าในหน้าร้าน (เหมือนการเลือกธีม)</p>
+        </div>
+        <div class="pill">{{ ps.pageSize() }} รายการ/หน้า</div>
+      </div>
+      <div class="pagination-grid">
+        <button
+          type="button"
+          class="pagination-card"
+          *ngFor="let size of [6,9,12]"
+          [class.active]="ps.pageSize() === size"
+          (click)="ps.setPageSize(size)">
+          <div class="pagination-number">{{ size }}</div>
+          <div class="small muted">สินค้าต่อหน้า</div>
+          <span class="pagination-check" aria-hidden="true">✓</span>
+        </button>
+      </div>
+    </div>
+
     <div class="admin-grid">
       <div class="panel admin-card">
         <div class="panel-header">

@@ -1,4 +1,4 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, effect, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ProductService, Product } from './product.service';
 
@@ -62,11 +62,11 @@ import { ProductService, Product } from './product.service';
           <option value="price-desc">ราคาสูง-ต่ำ</option>
           <option value="name">ชื่อสินค้า (ก-ฮ)</option>
         </select>
-        <select class="input" style="max-width:200px" [value]="pageSize()" (change)="changePageSize($any($event.target).value)">
-          <option [value]="6">6 สินค้าต่อหน้า</option>
-          <option [value]="9">9 สินค้าต่อหน้า</option>
-          <option [value]="12">12 สินค้าต่อหน้า</option>
-        </select>
+        <div class="pill pill-ghost" style="min-height:44px; display:flex; align-items:center; gap:8px;">
+          <span>แสดง</span>
+          <strong>{{ pageSize() }}</strong>
+          <span>สินค้าต่อหน้า (กำหนดจาก Admin)</span>
+        </div>
       </div>
     </div>
 
@@ -191,13 +191,18 @@ export class ShopComponent {
   sort: 'latest' | 'price-asc' | 'price-desc' | 'name' = 'latest';
   activeCat = signal<string>('');
   page = signal(1);
-  pageSize = signal(9);
+  pageSize = computed(() => this.ps.pageSize());
   showCartPanel = signal(false);
   cart = signal<{product: Product; qty: number}[]>(JSON.parse(localStorage.getItem('tmp_cart')||'[]'));
   detailProduct = signal<Product | null>(null);
   detailIndex = signal(0);
 
-  constructor(public ps: ProductService){}
+  constructor(public ps: ProductService){
+    effect(() => {
+      this.pageSize();
+      this.page.set(1);
+    });
+  }
 
   cats = computed(() => this.ps.categories());
   imgSrc(p: Product){ return this.productImages(p)[0] || ''; }
@@ -211,12 +216,6 @@ export class ShopComponent {
     this.sort = value;
     this.page.set(1);
   }
-  changePageSize(value: number){
-    const parsed = Math.max(1, Number(value) || this.pageSize());
-    this.pageSize.set(parsed);
-    this.page.set(1);
-  }
-
   selectCat(c: string){ this.activeCat.set(c); this.page.set(1); }
   iconFor(c: string){
     const t = (c||'').toLowerCase();

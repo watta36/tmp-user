@@ -8,6 +8,7 @@ export type KvState = {
   products: Product[];
   categories: string[];
   theme?: string;
+  pageSize?: number;
   version?: number;
 };
 
@@ -29,21 +30,23 @@ export class KvStoreService {
     deleteIds: number[],
     categories: string[],
     theme: string,
-  ): Observable<{ ok: boolean; version?: number; categories?: string[] }> {
-    return this.http.post<{ ok: boolean; version?: number; categories?: string[] }>(`${this.baseUrl}/api/kv-products`, {
+    pageSize: number,
+  ): Observable<{ ok: boolean; version?: number; categories?: string[]; pageSize?: number }> {
+    return this.http.post<{ ok: boolean; version?: number; categories?: string[]; pageSize?: number }>(`${this.baseUrl}/api/kv-products`, {
       action: 'patch',
       upserts,
       deleteIds,
       categories,
       theme,
+      pageSize,
     });
   }
 
   importChunk(
     products: Product[],
-    options: { reset?: boolean; categories: string[]; theme: string },
-  ): Observable<{ ok: boolean; imported: number; version?: number; categories?: string[]; theme?: string }> {
-    return this.http.post<{ ok: boolean; imported: number; version?: number; categories?: string[]; theme?: string }>(
+    options: { reset?: boolean; categories: string[]; theme: string; pageSize: number },
+  ): Observable<{ ok: boolean; imported: number; version?: number; categories?: string[]; theme?: string; pageSize?: number }> {
+    return this.http.post<{ ok: boolean; imported: number; version?: number; categories?: string[]; theme?: string; pageSize?: number }>(
       `${this.baseUrl}/api/kv-products`,
       {
         action: 'importChunk',
@@ -51,6 +54,7 @@ export class KvStoreService {
         reset: options.reset,
         categories: options.categories,
         theme: options.theme,
+        pageSize: options.pageSize,
       }
     );
   }
